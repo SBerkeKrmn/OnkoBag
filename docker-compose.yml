@@ -1,0 +1,24 @@
+# OnkoBağ — yerel geliştirme servisleri
+# Başlatma: docker compose up -d
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: onkobag-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: onkobag
+      POSTGRES_PASSWORD: onkobag_dev_password
+      POSTGRES_DB: onkobag
+    ports:
+      # Yerelde kurulu başka bir PostgreSQL ile çakışmaması için 5433
+      - "5433:5432"
+    volumes:
+      - onkobag-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U onkobag -d onkobag"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  onkobag-pgdata:
