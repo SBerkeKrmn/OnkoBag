@@ -174,14 +174,15 @@ tablolarından oluşan PostgreSQL veri modeli Prisma ile tasarlandı.
 
 ## 📋 Yapılacak İşler (açık kalacak)
 
-### #13 Danışman görüşmesi ve konu onayı
+### #13 Danışman görüşmesi ve konu onayı ✅
 - **Etiketler:** `teslim`
 - **Milestone:** Vize Teslimi
+- **Durum:** Tamamlandı (kod değişikliği içermez; görüşme bilgisi Issue yorumunda)
 
 ```
-- [ ] WhatsApp üzerinden özel mesajla randevu talebi
-- [ ] Bir sayfalık konu önerisiyle görüşmeye katılım
-- [ ] Onaylanan konu adının not edilmesi (rapor kapağında aynen kullanılacak)
+- [x] WhatsApp üzerinden özel mesajla randevu talebi
+- [x] Bir sayfalık konu önerisiyle görüşmeye katılım
+- [x] Onaylanan konu adının not edilmesi (rapor kapağında aynen kullanılacak)
 ```
 
 ### #14 Öneri ve tasarım raporu (8–15 sayfa)
