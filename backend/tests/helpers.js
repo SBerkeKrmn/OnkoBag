@@ -18,8 +18,12 @@ async function resetDb() {
   await prisma.$executeRawUnsafe(`
     TRUNCATE users, reports, moderation_logs, conversations, room_messages RESTART IDENTITY CASCADE
   `);
-  await prisma.chatRoom.deleteMany({ where: { roomNumber: { gt: 1 } } });
-  await prisma.chatRoom.updateMany({ data: { memberCount: 0, maxMembers: 500, isActive: true } });
+  // Testlerin eklediği kanser türleri (slug "test-" ile başlar) ve ek odalar silinir
+  await prisma.chatRoom.deleteMany({
+    where: { OR: [{ roomNumber: { gt: 1 } }, { cancerType: { slug: { startsWith: 'test-' } } }] },
+  });
+  await prisma.cancerType.deleteMany({ where: { slug: { startsWith: 'test-' } } });
+  await prisma.chatRoom.updateMany({ data: { memberCount: 0, maxMembers: 500, isActive: true, isDefault: true } });
   mailer.outbox.length = 0;
 }
 

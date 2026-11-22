@@ -24,5 +24,8 @@ const { posts, comments } = require('../modules/posts/posts.routes');
 
 router.use('/posts', posts);
 router.use('/comments', comments);
+router.use('/notifications', require('../modules/notifications/notifications.routes'));
+router.use('/reports', require('../modules/reports/reports.routes'));
+router.use('/admin', require('../modules/admin/admin.routes'));
 
 module.exports = router;
