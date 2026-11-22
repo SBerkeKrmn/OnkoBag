@@ -1,0 +1,686 @@
+// =============================================================================
+// OnkoBağ — Veritabanı Şeması (PostgreSQL + Prisma)
+// -----------------------------------------------------------------------------
+// Ayrıntılı açıklama ve ER diyagramı: docs/veritabani.md
+//
+// Adlandırma: Prisma modelleri PascalCase/camelCase, PostgreSQL tablo ve
+// kolonları snake_case (@@map / @map ile eşlenir).
+// Kimlikler: Kullanıcı ve içerik tabloları UUID; yüksek hacimli mesaj
+// tabloları cursor tabanlı sayfalama için BIGINT (autoincrement).
+// =============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// =============================================================================
+// ENUM'LAR
+// =============================================================================
+
+/// Sistem genelindeki yetki seviyesi (hastalık durumundan bağımsızdır)
+enum SystemRole {
+  USER
+  MODERATOR
+  ADMIN
+
+  @@map("system_role")
+}
+
+enum AccountStatus {
+  ACTIVE
+  SUSPENDED
+  DELETED
+
+  @@map("account_status")
+}
+
+enum Gender {
+  FEMALE
+  MALE
+  OTHER
+  PREFER_NOT_TO_SAY
+
+  @@map("gender")
+}
+
+/// Kimlerin kullanıcıya birebir mesaj başlatabileceği
+enum DmPermission {
+  EVERYONE
+  FOLLOWING
+  NOBODY
+
+  @@map("dm_permission")
+}
+
+/// Kullanıcının bir kanser türüyle ilişkisi: aktif tedavide mi, atlatmış mı
+enum CancerStatus {
+  ACTIVE_TREATMENT
+  SURVIVOR
+
+  @@map("cancer_status")
+}
+
+enum TokenType {
+  EMAIL_VERIFICATION
+  PASSWORD_RESET
+
+  @@map("token_type")
+}
+
+enum PostCategory {
+  QUESTION // Soru / danışma
+  EXPERIENCE // Deneyim paylaşımı
+  TREATMENT // Tedavi süreci
+  SIDE_EFFECTS // Yan etkilerle başa çıkma
+  MOTIVATION // Motivasyon / iyileşme hikayesi
+  DAILY_LIFE // Günlük yaşam adaptasyonu
+  OTHER
+
+  @@map("post_category")
+}
+
+enum ContentStatus {
+  PUBLISHED
+  HIDDEN // Moderatör tarafından gizlendi
+  DELETED // Yazar veya moderatör tarafından silindi (soft delete)
+
+  @@map("content_status")
+}
+
+enum MessageType {
+  TEXT
+  IMAGE
+  SYSTEM // "X odaya katıldı" gibi sistem mesajları
+
+  @@map("message_type")
+}
+
+enum ReportTargetType {
+  USER
+  POST
+  COMMENT
+  ROOM_MESSAGE
+  DIRECT_MESSAGE
+
+  @@map("report_target_type")
+}
+
+enum ReportReason {
+  SPAM
+  HARASSMENT // Taciz / zorbalık
+  MISINFORMATION // Yanlış / tehlikeli tıbbi bilgi
+  SELF_HARM // Kendine zarar verme riski
+  INAPPROPRIATE_CONTENT
+  IMPERSONATION // Sahte hesap / kimliğe bürünme
+  OTHER
+
+  @@map("report_reason")
+}
+
+enum ReportStatus {
+  PENDING
+  IN_REVIEW
+  RESOLVED
+  DISMISSED
+
+  @@map("report_status")
+}
+
+enum ModerationActionType {
+  HIDE_CONTENT
+  RESTORE_CONTENT
+  DELETE_CONTENT
+  WARN_USER
+  SUSPEND_USER
+  UNSUSPEND_USER
+  VERIFY_SURVIVOR
+  REVOKE_SURVIVOR
+  CHANGE_ROLE
+  CREATE_ROOM
+  CLOSE_ROOM
+
+  @@map("moderation_action_type")
+}
+
+enum NotificationType {
+  NEW_FOLLOWER
+  POST_LIKED
+  POST_COMMENTED
+  COMMENT_REPLIED
+  COMMENT_LIKED
+  NEW_DIRECT_MESSAGE
+  SURVIVOR_VERIFIED
+  REPORT_RESOLVED
+  SYSTEM
+
+  @@map("notification_type")
+}
+
+enum DevicePlatform {
+  ANDROID
+  IOS
+
+  @@map("device_platform")
+}
+
+// =============================================================================
+// 1. KULLANICI VE KİMLİK DOĞRULAMA
+// =============================================================================
+
+model User {
+  id              String        @id @default(uuid()) @db.Uuid
+  /// Uygulama katmanında küçük harfe çevrilerek saklanır
+  email           String        @unique @db.VarChar(255)
+  passwordHash    String        @map("password_hash") @db.VarChar(255)
+  /// Benzersiz, herkese görünen takma ad (gerçek ad zorunlu değildir — gizlilik)
+  username        String        @unique @db.VarChar(30)
+  displayName     String?       @map("display_name") @db.VarChar(60)
+  bio             String?       @db.VarChar(500)
+  avatarUrl       String?       @map("avatar_url") @db.VarChar(500)
+  birthYear       Int?          @map("birth_year") @db.SmallInt
+  gender          Gender?
+  /// Türkiye il adı (opsiyonel)
+  city            String?       @db.VarChar(40)
+
+  role            SystemRole    @default(USER)
+  status          AccountStatus @default(ACTIVE)
+  dmPermission    DmPermission  @default(EVERYONE) @map("dm_permission")
+
+  emailVerifiedAt DateTime?     @map("email_verified_at") @db.Timestamptz(6)
+  /// KVKK: sağlık verisi özel nitelikli kişisel veridir, açık rıza zamanı tutulur
+  kvkkConsentAt   DateTime      @map("kvkk_consent_at") @db.Timestamptz(6)
+  termsAcceptedAt DateTime      @map("terms_accepted_at") @db.Timestamptz(6)
+  suspendedUntil  DateTime?     @map("suspended_until") @db.Timestamptz(6)
+  lastSeenAt      DateTime?     @map("last_seen_at") @db.Timestamptz(6)
+
+  createdAt       DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt       DateTime?     @map("deleted_at") @db.Timestamptz(6)
+
+  // --- İlişkiler ---
+  cancerProfiles        UserCancerProfile[]       @relation("ProfileOwner")
+  verifiedProfiles      UserCancerProfile[]       @relation("ProfileVerifier")
+  authTokens            AuthToken[]
+  refreshTokens         RefreshToken[]
+  pushTokens            PushToken[]
+
+  roomMemberships       RoomMembership[]
+  roomMessages          RoomMessage[]
+  conversationLinks     ConversationParticipant[]
+  directMessages        DirectMessage[]
+
+  posts                 Post[]
+  comments              Comment[]
+  postLikes             PostLike[]
+  commentLikes          CommentLike[]
+  uploadedMedia         Media[]
+
+  following             Follow[]                  @relation("Follower")
+  followers             Follow[]                  @relation("Following")
+  blocking              Block[]                   @relation("Blocker")
+  blockedBy             Block[]                   @relation("Blocked")
+
+  reportsMade           Report[]                  @relation("Reporter")
+  reportsReviewed       Report[]                  @relation("ReportReviewer")
+  moderationActions     ModerationLog[]           @relation("Moderator")
+  moderationTargets     ModerationLog[]           @relation("ModerationTargetUser")
+
+  notifications         Notification[]            @relation("NotificationRecipient")
+  triggeredNotifications Notification[]           @relation("NotificationActor")
+
+  @@index([status])
+  @@map("users")
+}
+
+/// E-posta doğrulama ve şifre sıfırlama için tek kullanımlık tokenlar.
+/// Token'ın kendisi değil, SHA-256 hash'i saklanır.
+model AuthToken {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  type      TokenType
+  tokenHash String    @unique @map("token_hash") @db.VarChar(128)
+  expiresAt DateTime  @map("expires_at") @db.Timestamptz(6)
+  usedAt    DateTime? @map("used_at") @db.Timestamptz(6)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, type])
+  @@map("auth_tokens")
+}
+
+/// JWT refresh token'ları (cihaz başına oturum). Hash'lenmiş olarak saklanır.
+model RefreshToken {
+  id         String    @id @default(uuid()) @db.Uuid
+  userId     String    @map("user_id") @db.Uuid
+  tokenHash  String    @unique @map("token_hash") @db.VarChar(128)
+  deviceInfo String?   @map("device_info") @db.VarChar(255)
+  ipAddress  String?   @map("ip_address") @db.VarChar(45)
+  expiresAt  DateTime  @map("expires_at") @db.Timestamptz(6)
+  revokedAt  DateTime? @map("revoked_at") @db.Timestamptz(6)
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
+/// Mobil push bildirimleri için cihaz token'ları (Expo / FCM / APNs)
+model PushToken {
+  id         String         @id @default(uuid()) @db.Uuid
+  userId     String         @map("user_id") @db.Uuid
+  token      String         @unique @db.VarChar(255)
+  platform   DevicePlatform
+  createdAt  DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  lastUsedAt DateTime       @default(now()) @map("last_used_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("push_tokens")
+}
+
+// =============================================================================
+// 2. KANSER TÜRLERİ VE KULLANICI HASTALIK PROFİLİ
+// =============================================================================
+
+model CancerType {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique @db.VarChar(100)
+  slug        String   @unique @db.VarChar(100)
+  description String?  @db.Text
+  iconName    String?  @map("icon_name") @db.VarChar(50)
+  isActive    Boolean  @default(true) @map("is_active")
+  sortOrder   Int      @default(0) @map("sort_order")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  userProfiles UserCancerProfile[]
+  rooms        ChatRoom[]
+  posts        Post[]
+
+  @@map("cancer_types")
+}
+
+/// Kullanıcının kanser türü ve o türdeki durumu (aktif hasta / iyileşen).
+/// Bir kullanıcı birden fazla kayda sahip olabilir (ör. bir türü atlatmış,
+/// başka bir türde aktif tedavide). Kullanıcının ana profili isPrimary=true'dur
+/// (kullanıcı başına tek primary — uygulama katmanında / kısmi indeksle sağlanır).
+model UserCancerProfile {
+  id            String       @id @default(uuid()) @db.Uuid
+  userId        String       @map("user_id") @db.Uuid
+  cancerTypeId  Int          @map("cancer_type_id")
+  status        CancerStatus
+  diagnosisYear Int?         @map("diagnosis_year") @db.SmallInt
+  /// Yalnızca SURVIVOR için anlamlı: tedavinin tamamlandığı yıl
+  remissionYear Int?         @map("remission_year") @db.SmallInt
+  isPrimary     Boolean      @default(false) @map("is_primary")
+
+  /// İyileşen rozeti: moderatör/admin onayıyla verilir
+  isVerified    Boolean      @default(false) @map("is_verified")
+  verifiedById  String?      @map("verified_by_id") @db.Uuid
+  verifiedAt    DateTime?    @map("verified_at") @db.Timestamptz(6)
+
+  createdAt     DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user       User       @relation("ProfileOwner", fields: [userId], references: [id], onDelete: Cascade)
+  cancerType CancerType @relation(fields: [cancerTypeId], references: [id], onDelete: Restrict)
+  verifiedBy User?      @relation("ProfileVerifier", fields: [verifiedById], references: [id], onDelete: SetNull)
+
+  @@unique([userId, cancerTypeId])
+  @@index([cancerTypeId, status])
+  @@map("user_cancer_profiles")
+}
+
+// =============================================================================
+// 3. GENEL SOHBET ODALARI (kanser türüne özgü, ölçeklenebilir)
+// =============================================================================
+
+/// Her kanser türü için başlangıçta bir varsayılan oda (isDefault=true) bulunur.
+/// Odanın üye sayısı maxMembers'a ulaştığında aynı türde yeni oda açılır ve yeni
+/// kullanıcılar boş kapasiteli odaya yönlendirilir.
+model ChatRoom {
+  id           String   @id @default(uuid()) @db.Uuid
+  cancerTypeId Int      @map("cancer_type_id")
+  name         String   @db.VarChar(100)
+  description  String?  @db.VarChar(500)
+  /// Aynı kanser türündeki odaların sıra numarası (Meme Kanseri #1, #2 ...)
+  roomNumber   Int      @default(1) @map("room_number")
+  maxMembers   Int      @default(500) @map("max_members")
+  /// Denormalize üye sayısı — oda ataması sırasında hızlı kapasite kontrolü için
+  memberCount  Int      @default(0) @map("member_count")
+  isDefault    Boolean  @default(false) @map("is_default")
+  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  cancerType CancerType       @relation(fields: [cancerTypeId], references: [id], onDelete: Restrict)
+  members    RoomMembership[]
+  messages   RoomMessage[]
+
+  @@unique([cancerTypeId, roomNumber])
+  @@index([cancerTypeId, isActive])
+  @@map("chat_rooms")
+}
+
+model RoomMembership {
+  roomId     String    @map("room_id") @db.Uuid
+  userId     String    @map("user_id") @db.Uuid
+  joinedAt   DateTime  @default(now()) @map("joined_at") @db.Timestamptz(6)
+  /// Okunmamış mesaj sayısını hesaplamak için son okunan mesaj
+  lastReadMessageId BigInt? @map("last_read_message_id")
+  isMuted    Boolean   @default(false) @map("is_muted")
+  /// Moderatörün odada susturma cezası
+  silencedUntil DateTime? @map("silenced_until") @db.Timestamptz(6)
+
+  room ChatRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  user User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([roomId, userId])
+  @@index([userId])
+  @@map("room_memberships")
+}
+
+model RoomMessage {
+  id        BigInt        @id @default(autoincrement())
+  roomId    String        @map("room_id") @db.Uuid
+  /// SYSTEM mesajlarında null olabilir; kullanıcı silinirse null'a çekilir
+  senderId  String?       @map("sender_id") @db.Uuid
+  type      MessageType   @default(TEXT)
+  content   String?       @db.VarChar(2000)
+  replyToId BigInt?       @map("reply_to_id")
+  status    ContentStatus @default(PUBLISHED)
+  editedAt  DateTime?     @map("edited_at") @db.Timestamptz(6)
+  createdAt DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  room    ChatRoom      @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  sender  User?         @relation(fields: [senderId], references: [id], onDelete: SetNull)
+  replyTo RoomMessage?  @relation("RoomMessageReplies", fields: [replyToId], references: [id], onDelete: SetNull)
+  replies RoomMessage[] @relation("RoomMessageReplies")
+  media   Media[]
+
+  @@index([roomId, id(sort: Desc)])
+  @@index([senderId])
+  @@map("room_messages")
+}
+
+// =============================================================================
+// 4. BİREBİR ÖZEL MESAJLAŞMA
+// =============================================================================
+
+/// İki kullanıcı arasındaki özel sohbet. directKey = "<küçük uuid>:<büyük uuid>"
+/// biçiminde tutularak aynı iki kişi arasında tek sohbet olması garanti edilir.
+model Conversation {
+  id            String    @id @default(uuid()) @db.Uuid
+  directKey     String    @unique @map("direct_key") @db.VarChar(80)
+  lastMessageAt DateTime? @map("last_message_at") @db.Timestamptz(6)
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  participants ConversationParticipant[]
+  messages     DirectMessage[]
+
+  @@index([lastMessageAt(sort: Desc)])
+  @@map("conversations")
+}
+
+model ConversationParticipant {
+  conversationId    String    @map("conversation_id") @db.Uuid
+  userId            String    @map("user_id") @db.Uuid
+  lastReadMessageId BigInt?   @map("last_read_message_id")
+  isMuted           Boolean   @default(false) @map("is_muted")
+  /// Kullanıcı sohbeti listesinden sildiğinde; yeni mesaj gelince tekrar görünür
+  hiddenAt          DateTime? @map("hidden_at") @db.Timestamptz(6)
+  joinedAt          DateTime  @default(now()) @map("joined_at") @db.Timestamptz(6)
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([conversationId, userId])
+  @@index([userId])
+  @@map("conversation_participants")
+}
+
+model DirectMessage {
+  id             BigInt        @id @default(autoincrement())
+  conversationId String        @map("conversation_id") @db.Uuid
+  senderId       String?       @map("sender_id") @db.Uuid
+  type           MessageType   @default(TEXT)
+  content        String?       @db.VarChar(4000)
+  status         ContentStatus @default(PUBLISHED)
+  editedAt       DateTime?     @map("edited_at") @db.Timestamptz(6)
+  createdAt      DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender       User?        @relation(fields: [senderId], references: [id], onDelete: SetNull)
+  media        Media[]
+
+  @@index([conversationId, id(sort: Desc)])
+  @@map("direct_messages")
+}
+
+// =============================================================================
+// 5. GÖNDERİLER, YORUMLAR, BEĞENİLER
+// =============================================================================
+
+model Post {
+  id           String        @id @default(uuid()) @db.Uuid
+  authorId     String        @map("author_id") @db.Uuid
+  /// Gönderinin ait olduğu kanser topluluğu
+  cancerTypeId Int           @map("cancer_type_id")
+  category     PostCategory  @default(EXPERIENCE)
+  title        String?       @db.VarChar(150)
+  content      String        @db.VarChar(5000)
+  status       ContentStatus @default(PUBLISHED)
+  /// Denormalize sayaçlar — akış listelemede COUNT sorgusundan kaçınmak için
+  likeCount    Int           @default(0) @map("like_count")
+  commentCount Int           @default(0) @map("comment_count")
+  editedAt     DateTime?     @map("edited_at") @db.Timestamptz(6)
+  createdAt    DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  author     User       @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  cancerType CancerType @relation(fields: [cancerTypeId], references: [id], onDelete: Restrict)
+  comments   Comment[]
+  likes      PostLike[]
+  media      Media[]
+
+  @@index([cancerTypeId, status, createdAt(sort: Desc)])
+  @@index([authorId, createdAt(sort: Desc)])
+  @@map("posts")
+}
+
+/// Yorumlar tek seviye yanıtı destekler (parentId → üst yorum)
+model Comment {
+  id        String        @id @default(uuid()) @db.Uuid
+  postId    String        @map("post_id") @db.Uuid
+  authorId  String        @map("author_id") @db.Uuid
+  parentId  String?       @map("parent_id") @db.Uuid
+  content   String        @db.VarChar(2000)
+  status    ContentStatus @default(PUBLISHED)
+  likeCount Int           @default(0) @map("like_count")
+  editedAt  DateTime?     @map("edited_at") @db.Timestamptz(6)
+  createdAt DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  post    Post          @relation(fields: [postId], references: [id], onDelete: Cascade)
+  author  User          @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  parent  Comment?      @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies Comment[]     @relation("CommentReplies")
+  likes   CommentLike[]
+
+  @@index([postId, createdAt])
+  @@index([parentId])
+  @@map("comments")
+}
+
+model PostLike {
+  postId    String   @map("post_id") @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([postId, userId])
+  @@index([userId])
+  @@map("post_likes")
+}
+
+model CommentLike {
+  commentId String   @map("comment_id") @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  comment Comment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([commentId, userId])
+  @@index([userId])
+  @@map("comment_likes")
+}
+
+// =============================================================================
+// 6. MEDYA (gönderi ve mesaj görselleri)
+// =============================================================================
+
+/// Yüklenen dosyanın meta verisi. Dosyanın kendisi nesne depolamada (S3 /
+/// Cloudinary / yerel disk) tutulur. Bir medya kaydı en fazla bir hedefe
+/// (gönderi, oda mesajı, özel mesaj) bağlanır — migration'a CHECK kısıtı eklenir.
+/// Hiçbir hedefe bağlanmamış kayıtlar (yüklenip kullanılmayan) periyodik temizlenir.
+model Media {
+  id              String   @id @default(uuid()) @db.Uuid
+  uploaderId      String   @map("uploader_id") @db.Uuid
+  storageKey      String   @unique @map("storage_key") @db.VarChar(500)
+  url             String   @db.VarChar(1000)
+  mimeType        String   @map("mime_type") @db.VarChar(100)
+  sizeBytes       Int      @map("size_bytes")
+  width           Int?
+  height          Int?
+  sortOrder       Int      @default(0) @map("sort_order")
+
+  postId          String?  @map("post_id") @db.Uuid
+  roomMessageId   BigInt?  @map("room_message_id")
+  directMessageId BigInt?  @map("direct_message_id")
+
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  uploader      User           @relation(fields: [uploaderId], references: [id], onDelete: Cascade)
+  post          Post?          @relation(fields: [postId], references: [id], onDelete: Cascade)
+  roomMessage   RoomMessage?   @relation(fields: [roomMessageId], references: [id], onDelete: Cascade)
+  directMessage DirectMessage? @relation(fields: [directMessageId], references: [id], onDelete: Cascade)
+
+  @@index([postId])
+  @@index([roomMessageId])
+  @@index([directMessageId])
+  @@index([uploaderId])
+  @@map("media")
+}
+
+// =============================================================================
+// 7. SOSYAL İLİŞKİLER: TAKİP VE ENGELLEME
+// =============================================================================
+
+model Follow {
+  followerId  String   @map("follower_id") @db.Uuid
+  followingId String   @map("following_id") @db.Uuid
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  follower  User @relation("Follower", fields: [followerId], references: [id], onDelete: Cascade)
+  following User @relation("Following", fields: [followingId], references: [id], onDelete: Cascade)
+
+  @@id([followerId, followingId])
+  @@index([followingId])
+  @@map("follows")
+}
+
+/// Engellenen kullanıcı, engelleyene mesaj atamaz; birbirlerinin içerikleri
+/// akışta gizlenir. Engelleme takip ilişkisini de kaldırır (uygulama katmanı).
+model Block {
+  blockerId String   @map("blocker_id") @db.Uuid
+  blockedId String   @map("blocked_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  blocker User @relation("Blocker", fields: [blockerId], references: [id], onDelete: Cascade)
+  blocked User @relation("Blocked", fields: [blockedId], references: [id], onDelete: Cascade)
+
+  @@id([blockerId, blockedId])
+  @@index([blockedId])
+  @@map("blocks")
+}
+
+// =============================================================================
+// 8. ŞİKAYET VE MODERASYON
+// =============================================================================
+
+/// Polimorfik şikayet: targetType + targetId (UUID veya BIGINT, metin olarak)
+model Report {
+  id             String           @id @default(uuid()) @db.Uuid
+  reporterId     String?          @map("reporter_id") @db.Uuid
+  targetType     ReportTargetType @map("target_type")
+  targetId       String           @map("target_id") @db.VarChar(64)
+  reason         ReportReason
+  description    String?          @db.VarChar(1000)
+  status         ReportStatus     @default(PENDING)
+  reviewedById   String?          @map("reviewed_by_id") @db.Uuid
+  reviewedAt     DateTime?        @map("reviewed_at") @db.Timestamptz(6)
+  resolutionNote String?          @map("resolution_note") @db.VarChar(1000)
+  createdAt      DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  reporter   User? @relation("Reporter", fields: [reporterId], references: [id], onDelete: SetNull)
+  reviewedBy User? @relation("ReportReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+
+  @@index([status, createdAt])
+  @@index([targetType, targetId])
+  @@map("reports")
+}
+
+/// Moderatör / admin işlemlerinin denetim kaydı (audit log)
+model ModerationLog {
+  id           String               @id @default(uuid()) @db.Uuid
+  moderatorId  String?              @map("moderator_id") @db.Uuid
+  action       ModerationActionType
+  targetType   ReportTargetType?    @map("target_type")
+  targetId     String?              @map("target_id") @db.VarChar(64)
+  targetUserId String?              @map("target_user_id") @db.Uuid
+  reportId     String?              @map("report_id") @db.Uuid
+  reason       String?              @db.VarChar(1000)
+  /// İşleme özgü ek veri (ör. askıya alma süresi, eski/yeni rol)
+  metadata     Json?
+  createdAt    DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  moderator  User? @relation("Moderator", fields: [moderatorId], references: [id], onDelete: SetNull)
+  targetUser User? @relation("ModerationTargetUser", fields: [targetUserId], references: [id], onDelete: SetNull)
+
+  @@index([targetUserId])
+  @@index([createdAt])
+  @@map("moderation_logs")
+}
+
+// =============================================================================
+// 9. BİLDİRİMLER
+// =============================================================================
+
+model Notification {
+  id         String           @id @default(uuid()) @db.Uuid
+  userId     String           @map("user_id") @db.Uuid
+  actorId    String?          @map("actor_id") @db.Uuid
+  type       NotificationType
+  /// İlgili varlığın kimliği (gönderi, yorum, sohbet ...) — derin bağlantı için
+  entityId   String?          @map("entity_id") @db.VarChar(64)
+  message    String?          @db.VarChar(300)
+  readAt     DateTime?        @map("read_at") @db.Timestamptz(6)
+  createdAt  DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user  User  @relation("NotificationRecipient", fields: [userId], references: [id], onDelete: Cascade)
+  actor User? @relation("NotificationActor", fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([userId, readAt, createdAt(sort: Desc)])
+  @@map("notifications")
+}

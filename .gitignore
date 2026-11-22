@@ -1,0 +1,35 @@
+# Bağımlılıklar
+node_modules/
+
+# Ortam değişkenleri
+.env
+.env.*
+!.env.example
+
+# Derleme çıktıları
+dist/
+build/
+coverage/
+
+# Loglar
+*.log
+npm-debug.log*
+
+# React Native / Expo
+.expo/
+*.jks
+*.keystore
+*.p8
+*.p12
+*.mobileprovision
+ios/Pods/
+android/.gradle/
+
+# Yüklenen dosyalar (yerel geliştirme)
+uploads/
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
