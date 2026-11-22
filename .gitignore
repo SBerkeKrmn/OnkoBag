@@ -5,6 +5,7 @@ node_modules/
 .env
 .env.*
 !.env.example
+!.env.test
 
 # Derleme çıktıları
 dist/
@@ -27,6 +28,7 @@ android/.gradle/
 
 # Yüklenen dosyalar (yerel geliştirme)
 uploads/
+uploads-test/
 
 # IDE / OS
 .vscode/

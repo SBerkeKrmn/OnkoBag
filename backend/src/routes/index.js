@@ -3,8 +3,6 @@ const { Router } = require('express');
 const prisma = require('../lib/prisma');
 const asyncHandler = require('../utils/asyncHandler');
 
-const cancerTypesRoutes = require('../modules/cancer-types/cancerTypes.routes');
-
 const router = Router();
 
 router.get(
@@ -15,16 +13,8 @@ router.get(
   }),
 );
 
-router.use('/cancer-types', cancerTypesRoutes);
-
-// Backend aşamasında eklenecek modüller:
-// router.use('/auth', authRoutes);
-// router.use('/users', usersRoutes);
-// router.use('/rooms', roomsRoutes);
-// router.use('/conversations', conversationsRoutes);
-// router.use('/posts', postsRoutes);
-// router.use('/reports', reportsRoutes);
-// router.use('/notifications', notificationsRoutes);
-// router.use('/admin', adminRoutes);
+router.use('/auth', require('../modules/auth/auth.routes'));
+router.use('/users', require('../modules/users/users.routes'));
+router.use('/cancer-types', require('../modules/cancer-types/cancerTypes.routes'));
 
 module.exports = router;

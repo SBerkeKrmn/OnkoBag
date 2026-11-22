@@ -9,18 +9,34 @@ const env = require('./config/env');
 const routes = require('./routes');
 const { notFound, errorHandler } = require('./middlewares/errorHandler');
 
+// Mesaj kimlikleri BIGINT; JSON'da hassasiyet kaybı olmaması için string olarak döner
+// eslint-disable-next-line no-extend-native
+BigInt.prototype.toJSON = function toJSON() {
+  return this.toString();
+};
+
 const app = express();
 
 app.disable('x-powered-by');
-app.use(helmet());
+app.set('trust proxy', 1);
+app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
 app.use(cors({ origin: env.corsOrigins }));
 app.use(express.json({ limit: '1mb' }));
-app.use(morgan(env.isProduction ? 'combined' : 'dev'));
+if (!env.isTest) app.use(morgan(env.isProduction ? 'combined' : 'dev'));
 
 app.use(
   '/api',
-  rateLimit({ windowMs: 15 * 60 * 1000, limit: 300, standardHeaders: 'draft-8', legacyHeaders: false }),
+  rateLimit({
+    windowMs: 15 * 60 * 1000,
+    limit: 1000,
+    standardHeaders: 'draft-8',
+    legacyHeaders: false,
+    skip: () => env.isTest,
+  }),
 );
+
+// Yüklenen görseller (dosya adları tahmin edilemez UUID'lerdir)
+app.use('/uploads', express.static(env.uploadDir, { maxAge: '7d', index: false }));
 
 app.use('/api/v1', routes);
 
