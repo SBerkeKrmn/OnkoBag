@@ -40,7 +40,7 @@
 
 | Metot | Yol | Gövde | Açıklama |
 |---|---|---|---|
-| POST | `/auth/register` | `email, password, username, displayName?, kvkkConsent: true, termsAccepted: true, cancerProfile: { cancerTypeId, status, diagnosisYear?, remissionYear? }` | Kayıt + otomatik oda ataması. Doğrulama kodu e-postayla gelir. `{ user, accessToken, refreshToken }` |
+| POST | `/auth/register` | `email, password, username, displayName?, ageConfirmed: true, kvkkConsent: true, termsAccepted: true, cancerProfile: { cancerTypeId, status, diagnosisYear?, remissionYear? }` | Kayıt + otomatik oda ataması. Doğrulama kodu e-postayla gelir. `{ user, accessToken, refreshToken }` |
 | POST | `/auth/login` | `email, password` | `{ user, accessToken, refreshToken }` |
 | POST | `/auth/refresh` | `refreshToken` | Yeni token çifti (eski refresh token iptal olur) |
 | POST | `/auth/logout` | `refreshToken` | Oturumu kapatır |

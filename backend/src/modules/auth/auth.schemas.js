@@ -42,6 +42,7 @@ const register = z.object({
   password,
   username,
   displayName: z.string().trim().min(1).max(60).optional(),
+  ageConfirmed: z.literal(true, { message: 'OnkoBağ yalnızca 18 yaş ve üzeri kullanıcılara açıktır' }),
   kvkkConsent: z.literal(true, { message: 'KVKK açık rıza onayı zorunludur' }),
   termsAccepted: z.literal(true, { message: 'Kullanım koşullarının kabulü zorunludur' }),
   cancerProfile: cancerProfileInput,

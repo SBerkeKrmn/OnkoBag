@@ -37,6 +37,7 @@ async function createUser({ verified = true, cancerTypeId = 1, status = 'ACTIVE_
     email: `user${suffix}@test.local`,
     password: 'Sifre1234',
     username: `user_${suffix}`,
+    ageConfirmed: true,
     kvkkConsent: true,
     termsAccepted: true,
     cancerProfile: { cancerTypeId, status },

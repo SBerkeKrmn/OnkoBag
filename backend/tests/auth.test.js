@@ -6,6 +6,7 @@ const validBody = (overrides = {}) => ({
   email: 'Ayse@Test.Local',
   password: 'Sifre1234',
   username: 'ayse_k',
+  ageConfirmed: true,
   kvkkConsent: true,
   termsAccepted: true,
   cancerProfile: { cancerTypeId: 1, status: 'SURVIVOR', diagnosisYear: 2019, remissionYear: 2021 },
@@ -20,6 +21,11 @@ describe('Kimlik doğrulama', () => {
     const res = await api().post('/api/v1/auth/register').send(validBody({ kvkkConsent: false }));
     assert.equal(res.status, 400);
     assert.equal(res.body.error.code, 'VALIDATION_ERROR');
+  });
+
+  test('18 yaş onayı olmadan kayıt reddedilir', async () => {
+    const res = await api().post('/api/v1/auth/register').send(validBody({ ageConfirmed: undefined }));
+    assert.equal(res.status, 400);
   });
 
   test('Zayıf şifre reddedilir', async () => {

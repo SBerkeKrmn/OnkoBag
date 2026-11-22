@@ -87,6 +87,7 @@ async function register(input, meta) {
   const passwordHash = await hashPassword(input.password);
   const now = new Date();
 
+  // ageConfirmed şema tarafından zorunlu tutulur; onay anı termsAcceptedAt ile kaydedilir
   const { user, code, roomId } = await prisma.$transaction(async (tx) => {
     const created = await tx.user.create({
       data: {
