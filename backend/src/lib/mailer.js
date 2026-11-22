@@ -21,7 +21,9 @@ async function sendMail({ to, subject, text }) {
   }
 
   if (!transporter) {
-    console.log(`\n[E-POSTA] Alıcı: ${to}\nKonu: ${subject}\n${text}\n`);
+    console.log(
+      `\n[E-POSTA — SMTP ayarlı olmadığı için gönderilmedi, yalnızca burada görünür]\nAlıcı: ${to}\nKonu: ${subject}\n${text}\n`,
+    );
     return;
   }
 

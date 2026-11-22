@@ -13,6 +13,7 @@
     "db:studio": "prisma studio",
     "db:generate": "prisma generate",
     "user:set-role": "node scripts/set-role.js",
+    "mail:test": "node scripts/test-mail.js",
     "test:db": "node scripts/prepare-test-db.js",
     "test": "node --test --test-concurrency=1 tests/"
   },
