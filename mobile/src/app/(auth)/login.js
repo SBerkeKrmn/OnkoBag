@@ -3,6 +3,7 @@ import { StyleSheet, View } from 'react-native';
 import { router } from 'expo-router';
 import { Banner, Button, Header, Screen, Text, TextField } from '../../components/ui';
 import { LogoMark } from '../../components/Logo';
+import SocialButtons from '../../components/SocialButtons';
 import { useAuth } from '../../context/AuthContext';
 import { spacing } from '../../constants/theme';
 
@@ -44,6 +45,7 @@ export default function LoginScreen() {
       </View>
 
       <View style={styles.form}>
+        <SocialButtons divider />
         {error ? <Banner tone="danger" message={error} /> : null}
         <TextField
           label="E-posta"

@@ -99,6 +99,7 @@ npm test
 
 - [Veri modeli ve ER diyagramı](docs/veritabani.md)
 - [API ve Socket.io olay referansı](docs/api.md)
+- [Google ve Apple ile giriş kurulumu](docs/sosyal-giris-kurulum.md)
 
 ## Güncel Durum
 

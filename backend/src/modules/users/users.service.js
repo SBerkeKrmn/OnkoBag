@@ -37,15 +37,19 @@ async function getMe(userId) {
       dmPermission: true,
       emailVerifiedAt: true,
       createdAt: true,
+      passwordHash: true,
+      identities: { select: { provider: true } },
       cancerProfiles: { select: cancerProfileSelect, orderBy: [{ isPrimary: 'desc' }, { createdAt: 'asc' }] },
       _count: { select: { followers: true, following: true, posts: { where: { status: 'PUBLISHED' } } } },
     },
   });
 
-  const { _count, emailVerifiedAt, ...rest } = user;
+  const { _count, emailVerifiedAt, passwordHash, identities, ...rest } = user;
   return {
     ...rest,
     emailVerified: Boolean(emailVerifiedAt),
+    hasPassword: Boolean(passwordHash),
+    linkedProviders: identities.map((i) => i.provider),
     stats: { followers: _count.followers, following: _count.following, posts: _count.posts },
   };
 }
@@ -74,10 +78,15 @@ async function updateMe(userId, input) {
  * oturumlar kapatılır. Kayıt, moderasyon geçmişinin bütünlüğü için fiziksel
  * olarak silinmez; `status = DELETED` olur.
  */
-async function deleteMe(userId, { password }) {
+async function deleteMe(userId, { password, confirm }) {
   const user = await prisma.user.findUniqueOrThrow({ where: { id: userId } });
-  if (!(await bcrypt.compare(password, user.passwordHash))) {
-    throw ApiError.badRequest('Şifre hatalı', { code: 'WRONG_PASSWORD' });
+  if (user.passwordHash) {
+    if (!password || !(await bcrypt.compare(password, user.passwordHash))) {
+      throw ApiError.badRequest('Şifre hatalı', { code: 'WRONG_PASSWORD' });
+    }
+  } else if (confirm !== true) {
+    // Yalnızca Google/Apple ile giriş yapan kullanıcılar şifre yerine açık onay verir
+    throw ApiError.badRequest('Hesap silme işlemini onaylaman gerekiyor', { code: 'CONFIRM_REQUIRED' });
   }
 
   const anonymous = `deleted_${userId.replace(/-/g, '').slice(0, 20)}`;
@@ -94,6 +103,8 @@ async function deleteMe(userId, { password }) {
     await tx.refreshToken.deleteMany({ where: { userId } });
     await tx.pushToken.deleteMany({ where: { userId } });
     await tx.authToken.deleteMany({ where: { userId } });
+    // Bağlı Google/Apple hesapları kaldırılır; aynı hesapla yeniden kayıt olunabilir
+    await tx.authIdentity.deleteMany({ where: { userId } });
     await tx.userCancerProfile.deleteMany({ where: { userId } });
     await tx.user.update({
       where: { id: userId },
@@ -108,7 +119,7 @@ async function deleteMe(userId, { password }) {
         birthYear: null,
         gender: null,
         city: null,
-        passwordHash: '!',
+        passwordHash: null,
       },
     });
   });

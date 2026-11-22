@@ -58,7 +58,26 @@ const forgotPassword = z.object({ email });
 
 const resetPassword = z.object({ email, code, newPassword: password });
 
-const changePassword = z.object({ currentPassword: z.string().min(1).max(72), newPassword: password });
+const social = z.object({
+  provider: z.enum(['GOOGLE', 'APPLE']),
+  idToken: z.string().min(20).max(5000),
+  /** Apple: istemcinin ürettiği ham nonce (Apple'a SHA-256 özeti gönderilir) */
+  nonce: z.string().min(16).max(200).optional(),
+  /** Apple adı yalnızca ilk girişte istemciye verir */
+  fullName: z.string().trim().max(60).optional(),
+});
+
+const socialComplete = z.object({
+  signupToken: z.string().min(20).max(4000),
+  username,
+  displayName: z.string().trim().min(1).max(60).optional(),
+  ageConfirmed: z.literal(true, { message: 'OnkoBağ yalnızca 18 yaş ve üzeri kullanıcılara açıktır' }),
+  kvkkConsent: z.literal(true, { message: 'KVKK açık rıza onayı zorunludur' }),
+  termsAccepted: z.literal(true, { message: 'Kullanım koşullarının kabulü zorunludur' }),
+  cancerProfile: cancerProfileInput,
+});
+
+const changePassword =z.object({ currentPassword: z.string().min(1).max(72), newPassword: password });
 
 module.exports = {
   email,
@@ -66,6 +85,8 @@ module.exports = {
   username,
   cancerProfileInput,
   register,
+  social,
+  socialComplete,
   login,
   refresh,
   verifyEmail,

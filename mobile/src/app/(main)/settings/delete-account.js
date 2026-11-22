@@ -1,23 +1,28 @@
-// Uygulama içinden hesap silme (App Store 5.1.1(v) ve Google Play hesap silme şartı)
+// Uygulama içinden hesap silme (App Store 5.1.1(v) ve Google Play hesap silme şartı).
+// Şifreli hesaplar şifreyle, yalnızca Google/Apple ile giren hesaplar açık onayla siler.
 import { useState } from 'react';
 import { Alert, StyleSheet, View } from 'react-native';
-import { Banner, Button, Header, Screen, Text, TextField } from '../../../components/ui';
+import { Banner, Button, Checkbox, Header, Screen, Text, TextField } from '../../../components/ui';
 import { usersApi } from '../../../api';
 import { useAuth } from '../../../context/AuthContext';
+import { signOutSocial } from '../../../lib/socialAuth';
 import { colors, spacing } from '../../../constants/theme';
 
 const CONSEQUENCES = [
   'Profilin, kanser profillerin ve kişisel bilgilerin kalıcı olarak silinir.',
   'Gönderilerin ve yorumların kaldırılır.',
   'Tüm sohbet odalarından ayrılırsın; özel mesajlarında adın “Silinmiş kullanıcı” olarak görünür.',
+  'Bağlı Google/Apple hesabının OnkoBağ ile bağlantısı kaldırılır.',
   'Bu işlem geri alınamaz.',
 ];
 
 export default function DeleteAccountScreen() {
-  const { clearSession } = useAuth();
+  const { user, clearSession } = useAuth();
   const [password, setPassword] = useState('');
+  const [confirmed, setConfirmed] = useState(false);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
+  const hasPassword = user?.hasPassword !== false;
 
   const remove = () =>
     Alert.alert('Hesabın kalıcı olarak silinecek', 'Emin misin? Bu işlem geri alınamaz.', [
@@ -29,7 +34,8 @@ export default function DeleteAccountScreen() {
           setError(null);
           setLoading(true);
           try {
-            await usersApi.deleteMe(password);
+            await usersApi.deleteMe(hasPassword ? { password } : { confirm: true });
+            await signOutSocial();
             await clearSession();
           } catch (err) {
             setError(err.message);
@@ -56,8 +62,23 @@ export default function DeleteAccountScreen() {
           ))}
         </View>
         {error ? <Banner tone="danger" message={error} /> : null}
-        <TextField label="Onaylamak için şifreni gir" value={password} onChangeText={setPassword} secure textContentType="password" />
-        <Button title="Hesabımı kalıcı olarak sil" variant="danger" icon="trash-outline" onPress={remove} loading={loading} disabled={!password} />
+        {hasPassword ? (
+          <TextField label="Onaylamak için şifreni gir" value={password} onChangeText={setPassword} secure textContentType="password" />
+        ) : (
+          <Checkbox
+            checked={confirmed}
+            onToggle={() => setConfirmed((c) => !c)}
+            label="Hesabımın ve tüm verilerimin kalıcı olarak silineceğini anlıyorum."
+          />
+        )}
+        <Button
+          title="Hesabımı kalıcı olarak sil"
+          variant="danger"
+          icon="trash-outline"
+          onPress={remove}
+          loading={loading}
+          disabled={hasPassword ? !password : !confirmed}
+        />
       </View>
     </Screen>
   );

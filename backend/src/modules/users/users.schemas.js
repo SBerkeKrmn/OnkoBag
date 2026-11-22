@@ -24,7 +24,10 @@ const updateMe = z
   .partial()
   .refine((obj) => Object.keys(obj).length > 0, { message: 'Güncellenecek en az bir alan gönderin' });
 
-const deleteMe = z.object({ password: z.string().min(1).max(72) });
+/** Şifreli hesaplar şifre, yalnızca Google/Apple ile girenler confirm: true gönderir */
+const deleteMe = z
+  .object({ password: z.string().min(1).max(72).optional(), confirm: z.boolean().optional() })
+  .refine((b) => b.password || b.confirm === true, { message: 'Şifreni gir veya silmeyi onayla' });
 
 const createCancerProfile = cancerProfileInput.and(z.object({ isPrimary: z.boolean().default(false) }));
 

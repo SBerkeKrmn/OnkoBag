@@ -25,6 +25,11 @@ const schema = z.object({
   SMTP_PASS: z.string().optional(),
   MAIL_FROM: z.string().default('OnkoBağ <no-reply@onkobag.local>'),
 
+  // Google ile giriş: ID token'ın "aud" alanında kabul edilecek OAuth istemci kimlikleri (virgülle)
+  GOOGLE_CLIENT_IDS: z.string().default(''),
+  // Apple ile giriş: kabul edilecek "aud" değerleri. host.exp.Exponent = Expo Go ile geliştirme
+  APPLE_AUDIENCES: z.string().default('com.onkobag.app,host.exp.Exponent'),
+
   UPLOAD_DIR: z.string().default('uploads'),
   MAX_UPLOAD_MB: z.coerce.number().positive().default(5),
 });
@@ -44,4 +49,6 @@ module.exports = {
   isTest: env.NODE_ENV === 'test',
   corsOrigins: env.CORS_ORIGIN === '*' ? '*' : env.CORS_ORIGIN.split(',').map((o) => o.trim()),
   uploadDir: path.resolve(__dirname, '../../', env.UPLOAD_DIR),
+  googleClientIds: env.GOOGLE_CLIENT_IDS.split(',').map((s) => s.trim()).filter(Boolean),
+  appleAudiences: env.APPLE_AUDIENCES.split(',').map((s) => s.trim()).filter(Boolean),
 };

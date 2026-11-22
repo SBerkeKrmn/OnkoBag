@@ -9,6 +9,8 @@ const qs = (params = {}) => {
 export const authApi = {
   register: (body) => request('/auth/register', { method: 'POST', body, auth: false }),
   login: (body) => request('/auth/login', { method: 'POST', body, auth: false }),
+  social: (body) => request('/auth/social', { method: 'POST', body, auth: false }),
+  socialComplete: (body) => request('/auth/social/complete', { method: 'POST', body, auth: false }),
   logout: (refreshToken) => request('/auth/logout', { method: 'POST', body: { refreshToken }, auth: false }),
   verifyEmail: (code) => request('/auth/verify-email', { method: 'POST', body: { code } }),
   resendVerification: () => request('/auth/resend-verification', { method: 'POST' }),
@@ -20,7 +22,8 @@ export const authApi = {
 export const usersApi = {
   me: () => request('/users/me'),
   updateMe: (body) => request('/users/me', { method: 'PATCH', body }),
-  deleteMe: (password) => request('/users/me', { method: 'DELETE', body: { password } }),
+  /** Şifreli hesap: { password }, yalnızca Google/Apple hesabı: { confirm: true } */
+  deleteMe: (body) => request('/users/me', { method: 'DELETE', body }),
   addCancerProfile: (body) => request('/users/me/cancer-profiles', { method: 'POST', body }),
   updateCancerProfile: (id, body) => request(`/users/me/cancer-profiles/${id}`, { method: 'PATCH', body }),
   removeCancerProfile: (id) => request(`/users/me/cancer-profiles/${id}`, { method: 'DELETE' }),

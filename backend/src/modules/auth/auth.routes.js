@@ -39,6 +39,25 @@ router.post(
   }),
 );
 
+/** Google / Apple ile giriş. Yanıt: AUTHENTICATED (oturum açıldı) veya PROFILE_REQUIRED (kayıt tamamlanmalı) */
+router.post(
+  '/social',
+  authLimiter,
+  validate({ body: schemas.social }),
+  asyncHandler(async (req, res) => {
+    res.json({ data: await service.socialLogin(req.body, meta(req)) });
+  }),
+);
+
+router.post(
+  '/social/complete',
+  authLimiter,
+  validate({ body: schemas.socialComplete }),
+  asyncHandler(async (req, res) => {
+    res.status(201).json({ data: await service.completeSocialSignup(req.body, meta(req)) });
+  }),
+);
+
 router.post(
   '/refresh',
   validate({ body: schemas.refresh }),

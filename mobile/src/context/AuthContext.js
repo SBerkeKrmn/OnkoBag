@@ -5,6 +5,7 @@ import { authApi, usersApi } from '../api';
 import { setSession, setSessionHandlers, getRefreshToken } from '../api/client';
 import { getItem, setItem, removeItem } from '../lib/storage';
 import { queryClient } from '../lib/queryClient';
+import { signOutSocial } from '../lib/socialAuth';
 
 const TOKENS_KEY = 'onkobag.session';
 
@@ -74,9 +75,33 @@ export function AuthProvider({ children }) {
     return data.user;
   }, [startSession]);
 
+  /**
+   * Google/Apple ile giriş. Sonuç:
+   *  { status: 'AUTHENTICATED', user } → oturum açıldı
+   *  { status: 'PROFILE_REQUIRED', signupToken, profile } → kayıt tamamlanmalı
+   */
+  const socialSignIn = useCallback(
+    async (credential) => {
+      const { data } = await authApi.social(credential);
+      if (data.status === 'AUTHENTICATED') await startSession(data);
+      return data;
+    },
+    [startSession],
+  );
+
+  const completeSocialSignup = useCallback(
+    async (payload) => {
+      const { data } = await authApi.socialComplete(payload);
+      await startSession(data);
+      return data.user;
+    },
+    [startSession],
+  );
+
   const logout = useCallback(async () => {
     const refreshToken = getRefreshToken();
     if (refreshToken) await authApi.logout(refreshToken).catch(() => {});
+    await signOutSocial();
     await clearSession();
   }, [clearSession]);
 
@@ -87,8 +112,20 @@ export function AuthProvider({ children }) {
   }, []);
 
   const value = useMemo(
-    () => ({ status, user, setUser, login, register, logout, refreshUser, saveTokens, clearSession }),
-    [status, user, login, register, logout, refreshUser, saveTokens, clearSession],
+    () => ({
+      status,
+      user,
+      setUser,
+      login,
+      register,
+      socialSignIn,
+      completeSocialSignup,
+      logout,
+      refreshUser,
+      saveTokens,
+      clearSession,
+    }),
+    [status, user, login, register, socialSignIn, completeSocialSignup, logout, refreshUser, saveTokens, clearSession],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

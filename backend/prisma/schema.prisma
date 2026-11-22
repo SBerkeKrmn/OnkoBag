@@ -65,6 +65,14 @@ enum CancerStatus {
   @@map("cancer_status")
 }
 
+/// Harici kimlik sağlayıcılar (Google ile giriş, Apple ile giriş)
+enum AuthProvider {
+  GOOGLE
+  APPLE
+
+  @@map("auth_provider")
+}
+
 enum TokenType {
   EMAIL_VERIFICATION
   PASSWORD_RESET
@@ -181,7 +189,8 @@ model User {
   id              String        @id @default(uuid()) @db.Uuid
   /// Uygulama katmanında küçük harfe çevrilerek saklanır
   email           String        @unique @db.VarChar(255)
-  passwordHash    String        @map("password_hash") @db.VarChar(255)
+  /// Yalnızca Google/Apple ile kayıt olan kullanıcılarda null olabilir
+  passwordHash    String?       @map("password_hash") @db.VarChar(255)
   /// Benzersiz, herkese görünen takma ad (gerçek ad zorunlu değildir — gizlilik)
   username        String        @unique @db.VarChar(30)
   displayName     String?       @map("display_name") @db.VarChar(60)
@@ -211,6 +220,7 @@ model User {
   cancerProfiles        UserCancerProfile[]       @relation("ProfileOwner")
   verifiedProfiles      UserCancerProfile[]       @relation("ProfileVerifier")
   authTokens            AuthToken[]
+  identities            AuthIdentity[]
   refreshTokens         RefreshToken[]
   pushTokens            PushToken[]
 
@@ -259,6 +269,24 @@ model AuthToken {
 
   @@index([userId, type])
   @@map("auth_tokens")
+}
+
+/// Kullanıcının bağlı harici hesapları. providerUserId, sağlayıcının kalıcı
+/// kullanıcı kimliğidir (ID token'daki "sub"); e-posta değişse de aynı kalır.
+model AuthIdentity {
+  id             String       @id @default(uuid()) @db.Uuid
+  userId         String       @map("user_id") @db.Uuid
+  provider       AuthProvider
+  providerUserId String       @map("provider_user_id") @db.VarChar(255)
+  email          String?      @db.VarChar(255)
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  lastUsedAt     DateTime     @default(now()) @map("last_used_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerUserId])
+  @@unique([userId, provider])
+  @@map("auth_identities")
 }
 
 /// JWT refresh token'ları (cihaz başına oturum). Hash'lenmiş olarak saklanır.

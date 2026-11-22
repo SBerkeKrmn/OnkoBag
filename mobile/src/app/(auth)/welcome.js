@@ -3,6 +3,7 @@ import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Button, Screen, Text } from '../../components/ui';
 import Logo from '../../components/Logo';
+import SocialButtons from '../../components/SocialButtons';
 import { colors, radius, spacing } from '../../constants/theme';
 
 const FEATURES = [
@@ -50,15 +51,21 @@ export default function WelcomeScreen() {
       </View>
 
       <View style={styles.actions}>
-        <Button title="Hesap oluştur" onPress={() => router.push('/register')} />
+        <SocialButtons divider />
+        <Button title="E-posta ile hesap oluştur" onPress={() => router.push('/register')} />
         <Button title="Giriş yap" variant="outline" onPress={() => router.push('/login')} />
       </View>
 
       <Text variant="caption" tone="muted" align="center" style={styles.disclaimer}>
-        OnkoBağ bir akran destek topluluğudur, tıbbi tavsiye vermez.{' '}
-        <Text variant="caption" tone="primary" onPress={() => router.push('/legal/medical')} accessibilityRole="link">
-          Tıbbi uyarı
+        Devam ederek{' '}
+        <Text variant="caption" tone="primary" onPress={() => router.push('/legal/terms')} accessibilityRole="link">
+          Kullanım Şartları
         </Text>
+        ’nı ve{' '}
+        <Text variant="caption" tone="primary" onPress={() => router.push('/legal/privacy')} accessibilityRole="link">
+          Gizlilik Politikası
+        </Text>
+        ’nı okuduğunu kabul edersin. OnkoBağ tıbbi tavsiye vermez.
       </Text>
     </Screen>
   );

@@ -1,12 +1,15 @@
 // Üç adımlı kayıt: 1) hesap bilgileri 2) kanser türü ve durum 3) onaylar
 import { useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
-import { router } from 'expo-router';
+import { Alert } from 'react-native';
+import { Redirect, router, useLocalSearchParams } from 'expo-router';
 import { Banner, Button, Checkbox, Header, Screen, Text, TextField } from '../../components/ui';
 import CancerTypePicker from '../../components/CancerTypePicker';
 import StatusChoice from '../../components/StatusChoice';
+import SocialButtons from '../../components/SocialButtons';
 import { useAuth } from '../../context/AuthContext';
 import { fieldErrors } from '../../lib/errors';
+import { clearPendingSignup, getPendingSignup } from '../../lib/pendingSignup';
 import { colors, radius, spacing } from '../../constants/theme';
 
 const STEPS = ['Hesabın', 'Yolculuğun', 'Onaylar'];
@@ -14,10 +17,12 @@ const USERNAME_RE = /^[a-zA-Z0-9_.]{3,30}$/;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const thisYear = new Date().getFullYear();
 
-function validateAccount(f) {
+function validateAccount(f, social) {
   const e = {};
-  if (!EMAIL_RE.test(f.email.trim())) e.email = 'Geçerli bir e-posta adresi gir';
   if (!USERNAME_RE.test(f.username.trim())) e.username = '3-30 karakter; harf, rakam, _ ve . kullanabilirsin';
+  // Google/Apple ile kayıtta e-posta sağlayıcıdan gelir, şifre gerekmez
+  if (social) return e;
+  if (!EMAIL_RE.test(f.email.trim())) e.email = 'Geçerli bir e-posta adresi gir';
   if (f.password.length < 8) e.password = 'Şifre en az 8 karakter olmalı';
   else if (!/[A-Za-zÇĞİÖŞÜçğıöşü]/.test(f.password) || !/\d/.test(f.password))
     e.password = 'Şifre en az bir harf ve bir rakam içermeli';
@@ -58,16 +63,33 @@ const LegalLink = ({ doc, children }) => (
   </Text>
 );
 
+const PROVIDER_NAMES = { GOOGLE: 'Google', APPLE: 'Apple' };
+
+/** Sağlayıcıdan gelen addan kullanıcı adı önerisi üretir: "Ayşe Kaya" → "ayse_kaya" */
+function suggestUsername(name) {
+  if (!name) return '';
+  const map = { ç: 'c', ğ: 'g', ı: 'i', ö: 'o', ş: 's', ü: 'u' };
+  const base = name
+    .toLocaleLowerCase('tr-TR')
+    .replace(/[çğıöşü]/g, (ch) => map[ch])
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+    .slice(0, 24);
+  return base.length >= 3 ? base : '';
+}
+
 export default function RegisterScreen() {
-  const { register } = useAuth();
+  const { register, completeSocialSignup } = useAuth();
+  const params = useLocalSearchParams();
+  const social = params.social === '1' ? getPendingSignup() : null;
   const [step, setStep] = useState(0);
   const [errors, setErrors] = useState({});
   const [serverError, setServerError] = useState(null);
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({
     email: '',
-    username: '',
-    displayName: '',
+    username: suggestUsername(social?.profile?.displayName),
+    displayName: social?.profile?.displayName ?? '',
     password: '',
     passwordConfirm: '',
     cancerType: null,
@@ -83,7 +105,7 @@ export default function RegisterScreen() {
   const set = (key) => (value) => setForm((f) => ({ ...f, [key]: value }));
 
   const next = () => {
-    const e = step === 0 ? validateAccount(form) : validateJourney(form);
+    const e = step === 0 ? validateAccount(form, Boolean(social)) : validateJourney(form);
     setErrors(e);
     if (Object.keys(e).length === 0) setStep((s) => s + 1);
   };
@@ -100,24 +122,35 @@ export default function RegisterScreen() {
 
     setLoading(true);
     setServerError(null);
+    const common = {
+      username: form.username.trim(),
+      displayName: form.displayName.trim() || undefined,
+      ageConfirmed: true,
+      termsAccepted: true,
+      kvkkConsent: true,
+      cancerProfile: {
+        cancerTypeId: form.cancerType.id,
+        status: form.status,
+        diagnosisYear: form.diagnosisYear ? Number(form.diagnosisYear) : undefined,
+        remissionYear: form.status === 'SURVIVOR' && form.remissionYear ? Number(form.remissionYear) : undefined,
+      },
+    };
     try {
-      await register({
-        email: form.email.trim(),
-        username: form.username.trim(),
-        displayName: form.displayName.trim() || undefined,
-        password: form.password,
-        ageConfirmed: true,
-        termsAccepted: true,
-        kvkkConsent: true,
-        cancerProfile: {
-          cancerTypeId: form.cancerType.id,
-          status: form.status,
-          diagnosisYear: form.diagnosisYear ? Number(form.diagnosisYear) : undefined,
-          remissionYear: form.status === 'SURVIVOR' && form.remissionYear ? Number(form.remissionYear) : undefined,
-        },
-      });
-      router.replace('/verify-email');
+      if (social) {
+        const user = await completeSocialSignup({ ...common, signupToken: social.signupToken });
+        clearPendingSignup();
+        router.replace(user.emailVerified ? '/feed' : '/verify-email');
+      } else {
+        await register({ ...common, email: form.email.trim(), password: form.password });
+        router.replace('/verify-email');
+      }
     } catch (err) {
+      if (err.code === 'SIGNUP_TOKEN_INVALID' || err.code === 'ALREADY_REGISTERED' || (social && err.code === 'EMAIL_TAKEN')) {
+        clearPendingSignup();
+        Alert.alert('Kayıt tamamlanamadı', err.message);
+        router.replace('/welcome');
+        return;
+      }
       // E-posta / kullanıcı adı çakışması ilk adımdaki alana gösterilir
       if (err.code === 'EMAIL_TAKEN') {
         setErrors({ email: err.message });
@@ -135,11 +168,14 @@ export default function RegisterScreen() {
     }
   };
 
+  // Sosyal kayıt bilgisi bellekte yoksa (ör. uygulama yeniden başlatıldı) baştan başlat
+  if (params.social === '1' && !social) return <Redirect href="/welcome" />;
+
   return (
     <Screen
       scroll
       keyboard
-      header={<Header back onBack={back} title="Hesap oluştur" />}
+      header={<Header back onBack={back} title={social ? 'Kaydını tamamla' : 'Hesap oluştur'} />}
       footer={
         <View style={styles.footer}>
           {step < 2 ? (
@@ -152,7 +188,43 @@ export default function RegisterScreen() {
     >
       <ProgressBar step={step} />
 
-      {step === 0 ? (
+      {step === 0 && social ? (
+        <View style={styles.section}>
+          <View>
+            <Text variant="title">Seni tanıyalım</Text>
+            <Text variant="body" tone="secondary">
+              Toplulukta takma adınla görünürsün; gerçek adını kullanmak zorunda değilsin.
+            </Text>
+          </View>
+          <Banner
+            tone="survivor"
+            icon="checkmark-circle"
+            title={`${PROVIDER_NAMES[social.provider]} hesabınla devam ediyorsun`}
+            message={`${social.profile.email} — bu adres hiçbir kullanıcıyla paylaşılmaz.`}
+          />
+          <TextField
+            label="Kullanıcı adı"
+            icon="at"
+            placeholder="ornek: umut_yolcusu"
+            value={form.username}
+            onChangeText={set('username')}
+            error={errors.username}
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+          <TextField
+            label="Görünen ad (isteğe bağlı)"
+            icon="person-outline"
+            placeholder="ör. Ayşe K."
+            value={form.displayName}
+            onChangeText={set('displayName')}
+            maxLength={60}
+            helper="Gerçek adını göstermek istemiyorsan değiştirebilir veya silebilirsin."
+          />
+        </View>
+      ) : null}
+
+      {step === 0 && !social ? (
         <View style={styles.section}>
           <View>
             <Text variant="title">Seni tanıyalım</Text>
@@ -160,6 +232,7 @@ export default function RegisterScreen() {
               Gerçek adını kullanmak zorunda değilsin; toplulukta takma adınla görünürsün.
             </Text>
           </View>
+          <SocialButtons mode="signup" divider />
           <TextField
             label="E-posta"
             icon="mail-outline"

@@ -31,7 +31,19 @@ export default function SettingsScreen() {
             value={user?.emailVerified ? 'Doğrulandı' : 'Doğrulanmadı'}
             onPress={user?.emailVerified ? undefined : () => router.push('/verify-email')}
           />
-          <SettingsRow icon="key-outline" label="Şifre değiştir" onPress={() => router.push('/settings/change-password')} last />
+          {user?.linkedProviders?.length ? (
+            <SettingsRow
+              icon="link-outline"
+              label="Bağlı hesaplar"
+              value={user.linkedProviders.map((p) => (p === 'GOOGLE' ? 'Google' : 'Apple')).join(', ')}
+            />
+          ) : null}
+          {user?.hasPassword ? (
+            <SettingsRow icon="key-outline" label="Şifre değiştir" onPress={() => router.push('/settings/change-password')} last />
+          ) : (
+            // Google/Apple ile kayıt olanlar e-posta kodu ile şifre belirleyebilir
+            <SettingsRow icon="key-outline" label="Şifre belirle" onPress={() => router.push('/forgot-password')} last />
+          )}
         </SettingsGroup>
 
         <SettingsGroup title="Gizlilik ve güvenlik">

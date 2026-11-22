@@ -42,6 +42,8 @@
 |---|---|---|---|
 | POST | `/auth/register` | `email, password, username, displayName?, ageConfirmed: true, kvkkConsent: true, termsAccepted: true, cancerProfile: { cancerTypeId, status, diagnosisYear?, remissionYear? }` | Kayıt + otomatik oda ataması. Doğrulama kodu e-postayla gelir. `{ user, accessToken, refreshToken }` |
 | POST | `/auth/login` | `email, password` | `{ user, accessToken, refreshToken }` |
+| POST | `/auth/social` | `provider (GOOGLE\|APPLE), idToken, nonce? (Apple için zorunlu), fullName?` | Sağlayıcı token'ını doğrular. `status: AUTHENTICATED` → `{ user, accessToken, refreshToken }`; yeni kullanıcıysa `status: PROFILE_REQUIRED` → `{ signupToken, profile }` |
+| POST | `/auth/social/complete` | `signupToken, username, displayName?, ageConfirmed, termsAccepted, kvkkConsent, cancerProfile` | Sosyal girişle gelen yeni kullanıcının kaydını tamamlar (30 dk geçerli token) |
 | POST | `/auth/refresh` | `refreshToken` | Yeni token çifti (eski refresh token iptal olur) |
 | POST | `/auth/logout` | `refreshToken` | Oturumu kapatır |
 | POST | `/auth/verify-email` 🔒 | `code` (6 hane) | 5 hatalı denemede kod geçersizleşir |
