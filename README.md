@@ -34,15 +34,20 @@ OnkoBag/
 │   │   ├── sql/              # Prisma dışı ek kısıtlar (CHECK, kısmi indeks)
 │   │   └── seed.js           # Kanser türleri + varsayılan sohbet odaları
 │   └── src/
-│       ├── config/           # Ortam değişkenleri (zod ile doğrulanır)
-│       ├── lib/              # Prisma istemcisi
-│       ├── middlewares/      # JWT doğrulama, rol kontrolü, hata yönetimi
-│       ├── modules/          # Özellik modülleri (auth, posts, rooms ...)
-│       ├── routes/           # /api/v1 router'ı
-│       ├── sockets/          # Socket.io sunucusu
-│       ├── utils/
-│       ├── app.js            # Express uygulaması
-│       └── server.js         # Giriş noktası (HTTP + Socket.io)
+│   ├── src/
+│   │   ├── config/           # Ortam değişkenleri (zod ile doğrulanır)
+│   │   ├── lib/              # Prisma, e-posta, realtime, engelleme yardımcıları
+│   │   ├── middlewares/      # JWT doğrulama, rol kontrolü, hata yönetimi
+│   │   ├── modules/          # auth, users, rooms, conversations, posts, media,
+│   │   │                     # notifications, reports, admin, cancer-types
+│   │   │                     # (her biri: *.routes.js, *.service.js, *.schemas.js)
+│   │   ├── routes/           # /api/v1 router'ı
+│   │   ├── sockets/          # Socket.io sunucusu ve olay işleyicileri
+│   │   ├── utils/            # Doğrulama, sayfalama, token yardımcıları
+│   │   ├── app.js            # Express uygulaması
+│   │   └── server.js         # Giriş noktası (HTTP + Socket.io)
+│   ├── scripts/              # Test veritabanı hazırlama, rol atama
+│   └── tests/                # Entegrasyon testleri (node:test + supertest)
 ├── mobile/                   # React Native (Expo) uygulaması
 │   └── src/
 │       ├── app/              # Ekranlar (Expo Router, dosya tabanlı)
@@ -61,11 +66,14 @@ docker compose up -d
 
 # 2. Backend
 cd backend
-cp .env.example .env          # JWT secret değerlerini değiştirin
+cp .env.example .env          # JWT_ACCESS_SECRET değerini değiştirin
 npm install
 npx prisma migrate deploy     # tabloları oluştur
 npx prisma db seed            # kanser türleri ve odalar
 npm run dev                   # http://localhost:3000/api/v1/health
+
+# İlk yönetici hesabı (uygulamadan kayıt olduktan sonra)
+npm run user:set-role -- ornek@eposta.com ADMIN
 
 # 3. Mobil uygulama (ayrı terminalde)
 cd mobile
@@ -75,20 +83,26 @@ npx expo start
 
 > Gerçek cihazda test ederken `mobile/app.json` içindeki `extra.apiUrl` değerini bilgisayarınızın yerel IP adresiyle değiştirin (ör. `http://192.168.1.20:3000/api/v1`).
 
-## API
+> SMTP ayarlanmamışsa doğrulama ve şifre sıfırlama kodları backend konsoluna yazdırılır.
 
-| Metot | Uç nokta | Açıklama |
-|---|---|---|
-| GET | `/api/v1/health` | Sunucu ve veritabanı durumu |
-| GET | `/api/v1/cancer-types` | Aktif kanser türleri listesi |
+## Testler
+
+Backend, ayrı bir test veritabanında (`onkobag_test`) çalışan 61 entegrasyon testine sahiptir: kimlik doğrulama, profil/takip/engelleme, sohbet odaları (ölçeklenme ve eşzamanlılık dahil), Socket.io ile anlık mesajlaşma, özel mesajlar, gönderiler ve moderasyon.
+
+```bash
+cd backend
+npm run test:db   # test veritabanını oluşturur, migration ve seed uygular (bir kez)
+npm test
+```
 
 ## Dokümantasyon
 
-- [Veri modeli](docs/veritabani.md)
+- [Veri modeli ve ER diyagramı](docs/veritabani.md)
+- [API ve Socket.io olay referansı](docs/api.md)
 
 ## Güncel Durum
 
-- [x] Veritabanı şeması tasarlandı (22 tablo, migration + seed)
+- [x] Veritabanı şeması (22 tablo, 3 migration, seed)
 - [x] Proje iskeleti (backend + mobil)
-- [ ] Backend (REST API + Socket.io)
+- [x] Backend: REST API (10 modül) + Socket.io + 61 entegrasyon testi
 - [ ] Mobil uygulama

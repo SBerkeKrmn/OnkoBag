@@ -199,12 +199,18 @@ DM başlatma kuralı: Alıcının `dm_permission` ayarı ve iki yönlü `blocks`
 
 > Not: Uygulamada kullanıcı silme işlemi önce **soft delete** (`status = DELETED`, `deleted_at`) olarak yapılır; KVKK kapsamındaki kalıcı silme talepleri ayrı bir iş akışıyla fiziksel silmeye dönüştürülür.
 
-## 5. Kurulum (backend iskeleti oluşturulduktan sonra)
+## 5. Migration'lar
+
+| Migration | İçerik |
+|---|---|
+| `20261122144903_init` | 22 tablo, enum'lar, indeksler + `sql/constraints.sql` içeriği (CHECK ve kısmi unique kısıtları) |
+| `20261122150406_auth_token_attempts` | Doğrulama kodlarına hatalı deneme sayacı (`auth_tokens.attempts`) — kaba kuvvet koruması |
+| `20261122151133_moderation_actions` | Moderasyon işlem türlerinin genişletilmesi (odada susturma, oda/kanser türü yönetimi, şikayet sonuçlandırma) |
 
 ```bash
 cd backend
-npx prisma migrate dev --create-only --name init   # migration dosyasını üret
-# prisma/sql/constraints.sql içeriğini üretilen migration.sql sonuna ekle
-npx prisma migrate dev                              # migration'ı uygula
-npx prisma db seed                                  # kanser türleri + varsayılan odalar
+npx prisma migrate deploy   # tüm migration'ları uygula
+npx prisma db seed          # kanser türleri + varsayılan odalar
 ```
+
+> Yeni bir Prisma dışı kısıt eklenecekse `npx prisma migrate dev --create-only --name <ad>` ile boş migration üretilip SQL elle eklenir.
