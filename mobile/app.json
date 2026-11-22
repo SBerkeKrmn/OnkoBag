@@ -50,7 +50,15 @@
     "extra": {
       "apiUrl": "http://192.168.1.39:3000/api/v1",
       "googleWebClientId": "553852567872-gslo1prh3nqdg02lhf2nucdqtli7q2ge.apps.googleusercontent.com",
-      "googleIosClientId": "553852567872-l029itvq165pm93qd4iloej1qkejr62q.apps.googleusercontent.com"
+      "googleIosClientId": "553852567872-l029itvq165pm93qd4iloej1qkejr62q.apps.googleusercontent.com",
+      "router": {
+        "asyncRoutes": {
+          "web": true
+        }
+      },
+      "eas": {
+        "projectId": "dcc13e3c-43fa-4755-8cc0-426674aab855"
+      }
     }
   }
 }
