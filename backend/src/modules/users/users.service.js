@@ -229,6 +229,7 @@ async function getProfile(viewerId, where) {
       bio: true,
       avatarUrl: true,
       city: true,
+      gender: true,
       dmPermission: true,
       createdAt: true,
       cancerProfiles: {
@@ -247,10 +248,12 @@ async function getProfile(viewerId, where) {
     prisma.block.count({ where: { blockerId: viewerId, blockedId: user.id } }),
   ]);
 
-  const { _count, dmPermission, ...rest } = user;
+  const { _count, dmPermission, gender, ...rest } = user;
   const isSelf = viewerId === user.id;
   return {
     ...rest,
+    // Cinsiyet profilde görünür; "Belirtmek istemiyorum" seçildiyse başkalarına gönderilmez
+    gender: gender === 'PREFER_NOT_TO_SAY' ? null : gender,
     stats: { followers: _count.followers, following: _count.following, posts: _count.posts },
     relationship: {
       isSelf,

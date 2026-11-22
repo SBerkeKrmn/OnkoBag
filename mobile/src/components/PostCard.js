@@ -1,13 +1,13 @@
 import { useState } from 'react';
-import { Alert, Image, Pressable, StyleSheet, View } from 'react-native';
+import { Image, Pressable, StyleSheet, View } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { ActionSheet, Card, IconButton, Text } from './ui';
 import UserLine from './UserLine';
 import { postsApi } from '../api';
-import { queryClient } from '../lib/queryClient';
+import { removePost, toggleLikeOptimistic } from '../lib/postCache';
 import { categoryOf, timeAgo } from '../lib/format';
-import { confirmBlock, openReport } from '../lib/actions';
+import { confirmAction, confirmBlock, openReport } from '../lib/actions';
 import { showError } from '../lib/errors';
 import { colors, radius, spacing } from '../constants/theme';
 
@@ -27,42 +27,33 @@ function MediaGrid({ media }) {
 
 /** detail=true: gönderi detay ekranında tam metin, kart dokunulabilir değil */
 export default function PostCard({ post, detail = false, onDeleted }) {
-  const [liked, setLiked] = useState(post.likedByMe);
-  const [likeCount, setLikeCount] = useState(post.likeCount);
   const [menuOpen, setMenuOpen] = useState(false);
   const category = categoryOf(post.category);
+  // Beğeni durumu önbellekten gelir: akış, profil ve detay ekranı aynı anda güncellenir
+  const liked = post.likedByMe;
+  const likeCount = post.likeCount;
 
-  const toggleLike = async () => {
-    const next = !liked;
-    setLiked(next);
-    setLikeCount((c) => c + (next ? 1 : -1));
-    try {
-      const { data } = next ? await postsApi.like(post.id) : await postsApi.unlike(post.id);
-      setLikeCount(data.likeCount);
-    } catch (err) {
-      setLiked(!next);
-      setLikeCount((c) => c + (next ? -1 : 1));
-      showError(err);
-    }
-  };
+  const toggleLike = () =>
+    toggleLikeOptimistic(post, (next) => (next ? postsApi.like(post.id) : postsApi.unlike(post.id))).catch((err) =>
+      showError(err),
+    );
 
   const remove = () =>
-    Alert.alert('Gönderi silinsin mi?', 'Bu işlem geri alınamaz.', [
-      { text: 'Vazgeç', style: 'cancel' },
-      {
-        text: 'Sil',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await postsApi.remove(post.id);
-            queryClient.invalidateQueries({ queryKey: ['posts'] });
-            onDeleted?.();
-          } catch (err) {
-            showError(err);
-          }
-        },
+    confirmAction({
+      title: 'Gönderi silinsin mi?',
+      message: 'Bu işlem geri alınamaz.',
+      confirmText: 'Sil',
+      destructive: true,
+      onConfirm: async () => {
+        try {
+          await postsApi.remove(post.id);
+          onDeleted?.();
+          removePost(post.id);
+        } catch (err) {
+          showError(err);
+        }
       },
-    ]);
+    });
 
   const menuOptions = post.isMine
     ? [{ label: 'Gönderiyi sil', icon: 'trash-outline', destructive: true, onPress: remove }]

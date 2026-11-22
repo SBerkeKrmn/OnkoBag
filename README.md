@@ -74,6 +74,9 @@ npm run dev                   # http://localhost:3000/api/v1/health
 
 # İlk yönetici hesabı (uygulamadan kayıt olduktan sonra)
 npm run user:set-role -- ornek@eposta.com ADMIN
+# Yönetici/moderatör uygulamada Profil → kalkan simgesi (veya Ayarlar → Moderasyon paneli)
+# ile şikayetleri, iyileşen onaylarını, kullanıcıları ve işlem kayıtlarını yönetir.
+# Diğer moderatörler panelden atanabilir (Kullanıcılar → Rolü "Moderatör" yap).
 
 # 3. Mobil uygulama (ayrı terminalde)
 cd mobile
@@ -87,7 +90,7 @@ npx expo start
 
 ## Testler
 
-Backend, ayrı bir test veritabanında (`onkobag_test`) çalışan 61 entegrasyon testine sahiptir: kimlik doğrulama, profil/takip/engelleme, sohbet odaları (ölçeklenme ve eşzamanlılık dahil), Socket.io ile anlık mesajlaşma, özel mesajlar, gönderiler ve moderasyon.
+Backend, ayrı bir test veritabanında (`onkobag_test`) çalışan 70 entegrasyon testine sahiptir: kimlik doğrulama, profil/takip/engelleme, sohbet odaları (ölçeklenme ve eşzamanlılık dahil), Socket.io ile anlık mesajlaşma, özel mesajlar, gönderiler ve moderasyon.
 
 ```bash
 cd backend
@@ -105,6 +108,7 @@ npm test
 
 - [x] Veritabanı şeması (22 tablo, 3 migration, seed)
 - [x] Proje iskeleti (backend + mobil)
-- [x] Backend: REST API (10 modül) + Socket.io + 61 entegrasyon testi
+- [x] Backend: REST API (10 modül) + Socket.io + 70 entegrasyon testi
 - [x] Mobil uygulama: kayıt/giriş, akış, gönderiler, sohbet odaları, özel mesajlar, profil, ayarlar, şikayet/engelleme, yasal metinler
-- [ ] Push bildirimleri, moderatör ekranları, mağaza yayını
+- [x] Moderasyon paneli (şikayetler, iyileşen onayı, kullanıcı yönetimi, işlem kayıtları)
+- [ ] Push bildirimleri, mağaza yayını

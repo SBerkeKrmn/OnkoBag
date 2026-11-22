@@ -4,6 +4,9 @@ import { Avatar, StatusBadge, Text } from './ui';
 import { displayNameOf } from '../lib/format';
 import { colors, radius, spacing } from '../constants/theme';
 
+// "Belirtmek istemiyorum" profilde gösterilmez
+const GENDER_LABELS = { FEMALE: 'Kadın', MALE: 'Erkek', OTHER: 'Diğer' };
+
 function Stat({ value, label }) {
   return (
     <View style={styles.stat}>
@@ -34,8 +37,7 @@ export default function ProfileHeader({ profile, actions }) {
           {displayNameOf(profile)}
         </Text>
         <Text variant="body" tone="muted" align="center">
-          @{profile.username}
-          {profile.city ? ` · ${profile.city}` : ''}
+          {[`@${profile.username}`, GENDER_LABELS[profile.gender], profile.city].filter(Boolean).join(' · ')}
         </Text>
       </View>
 

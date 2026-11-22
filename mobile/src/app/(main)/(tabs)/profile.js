@@ -8,6 +8,7 @@ import PostCard from '../../../components/PostCard';
 import useUserPosts from '../../../hooks/useUserPosts';
 import { useAuth } from '../../../context/AuthContext';
 import { confirmLogout } from '../../../lib/actions';
+import { isModerator } from '../../../lib/moderation';
 import { colors, spacing } from '../../../constants/theme';
 
 export default function ProfileScreen() {
@@ -32,7 +33,14 @@ export default function ProfileScreen() {
         <Header
           large
           title="Profilim"
-          right={<IconButton icon="settings-outline" label="Ayarlar" onPress={() => router.push('/settings')} />}
+          right={
+            <>
+              {isModerator(user) ? (
+                <IconButton icon="shield-checkmark-outline" label="Moderasyon paneli" onPress={() => router.push('/moderation')} />
+              ) : null}
+              <IconButton icon="settings-outline" label="Ayarlar" onPress={() => router.push('/settings')} />
+            </>
+          }
         />
       }
     >

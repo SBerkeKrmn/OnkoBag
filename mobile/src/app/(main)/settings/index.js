@@ -1,5 +1,6 @@
 import { Linking, StyleSheet, View } from 'react-native';
 import { confirmLogout } from '../../../lib/actions';
+import { isModerator, ROLE_LABELS } from '../../../lib/moderation';
 import Constants from 'expo-constants';
 import { router } from 'expo-router';
 import { Header, Screen, Text } from '../../../components/ui';
@@ -40,6 +41,18 @@ export default function SettingsScreen() {
             <SettingsRow icon="key-outline" label="Şifre belirle" onPress={() => router.push('/forgot-password')} last />
           )}
         </SettingsGroup>
+
+        {isModerator(user) ? (
+          <SettingsGroup title="Moderasyon">
+            <SettingsRow
+              icon="shield-checkmark-outline"
+              label="Moderasyon paneli"
+              value={ROLE_LABELS[user.role]}
+              onPress={() => router.push('/moderation')}
+              last
+            />
+          </SettingsGroup>
+        ) : null}
 
         <SettingsGroup title="Gizlilik ve güvenlik">
           <SettingsRow

@@ -4,19 +4,18 @@ import { Alert, Image, Pressable, ScrollView, StyleSheet, View } from 'react-nat
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-import { useQueryClient } from '@tanstack/react-query';
 import { Banner, Button, Chip, Header, Screen, Text, TextField } from '../../../components/ui';
 import { mediaApi, postsApi } from '../../../api';
 import { useAuth } from '../../../context/AuthContext';
 import { POST_CATEGORIES } from '../../../lib/format';
 import { showError } from '../../../lib/errors';
+import { addNewPost } from '../../../lib/postCache';
 import { colors, radius, spacing } from '../../../constants/theme';
 
 const MAX_IMAGES = 4;
 
 export default function NewPostScreen() {
-  const { user } = useAuth();
-  const queryClient = useQueryClient();
+  const { user, refreshUser } = useAuth();
   const communities = user?.cancerProfiles ?? [];
 
   const [cancerTypeId, setCancerTypeId] = useState(communities[0]?.cancerType.id ?? null);
@@ -54,8 +53,8 @@ export default function NewPostScreen() {
     }
     setLoading(true);
     try {
-      const uploaded = [];
-      for (const asset of images) uploaded.push(await mediaApi.upload(asset));
+      // Görseller sırayla değil aynı anda yüklenir
+      const uploaded = await Promise.all(images.map((asset) => mediaApi.upload(asset)));
       const { data } = await postsApi.create({
         cancerTypeId,
         category,
@@ -63,7 +62,9 @@ export default function NewPostScreen() {
         content: content.trim(),
         mediaIds: uploaded.map((m) => m.id),
       });
-      queryClient.invalidateQueries({ queryKey: ['posts'] });
+      // Yeni gönderi akışa ve profile hemen eklenir; detay ekranı yeniden yüklemeden açılır
+      addNewPost(data, user.id);
+      refreshUser().catch(() => {});
       router.replace(`/post/${data.id}`);
     } catch (err) {
       showError(err, 'Gönderi paylaşılamadı');

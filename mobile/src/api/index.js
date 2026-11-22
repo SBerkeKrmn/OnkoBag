@@ -97,3 +97,22 @@ export const reportsApi = {
 };
 
 export const mediaApi = { upload: uploadImage };
+
+/** Moderatör/yönetici uç noktaları (yalnızca MODERATOR ve ADMIN rolü) */
+export const adminApi = {
+  stats: () => request('/admin/stats'),
+  reports: (params) => request(`/admin/reports${qs(params)}`),
+  updateReport: (id, body) => request(`/admin/reports/${id}`, { method: 'PATCH', body }),
+  hideContent: (targetType, targetId, body) =>
+    request(`/admin/content/${targetType}/${targetId}/hide`, { method: 'POST', body }),
+  restoreContent: (targetType, targetId, body) =>
+    request(`/admin/content/${targetType}/${targetId}/restore`, { method: 'POST', body }),
+  users: (params) => request(`/admin/users${qs(params)}`),
+  suspend: (id, body) => request(`/admin/users/${id}/suspend`, { method: 'POST', body }),
+  unsuspend: (id, body) => request(`/admin/users/${id}/unsuspend`, { method: 'POST', body }),
+  warn: (id, body) => request(`/admin/users/${id}/warn`, { method: 'POST', body }),
+  changeRole: (id, role) => request(`/admin/users/${id}/role`, { method: 'PATCH', body: { role } }),
+  pendingSurvivors: () => request('/admin/survivor-verifications'),
+  verifySurvivor: (profileId) => request(`/admin/cancer-profiles/${profileId}/verify`, { method: 'POST', body: {} }),
+  logs: (cursor) => request(`/admin/logs${qs({ cursor })}`),
+};

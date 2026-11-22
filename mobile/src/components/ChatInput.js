@@ -1,6 +1,6 @@
 // Mesaj / yorum yazma çubuğu. Yanıtlanan öğe varsa üstünde gösterilir.
 import { useState } from 'react';
-import { ActivityIndicator, Platform, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Text, useKeyboardInset } from './ui';
@@ -22,15 +22,15 @@ export default function ChatInput({
   const keyboardOpen = useKeyboardInset() > 0;
   const insets = keyboardOpen ? { bottom: 0 } : safeInsets;
   const [text, setText] = useState('');
-  const [sending, setSending] = useState(false);
 
+  // Kutu hemen temizlenir (mesaj/yorum listede anında görünür); gönderim
+  // başarısız olursa yazılan metin geri getirilir, kaybolmaz
   const send = async () => {
     const value = text.trim();
-    if (!value || sending) return;
-    setSending(true);
+    if (!value) return;
+    setText('');
     const ok = await onSend(value);
-    setSending(false);
-    if (ok !== false) setText('');
+    if (ok === false) setText((current) => current || value);
   };
 
   if (disabled) {
@@ -82,16 +82,12 @@ export default function ChatInput({
         />
         <Pressable
           onPress={send}
-          disabled={!text.trim() || sending}
+          disabled={!text.trim()}
           accessibilityRole="button"
           accessibilityLabel="Gönder"
-          style={[styles.send, (!text.trim() || sending) && { backgroundColor: colors.primaryMuted }]}
+          style={[styles.send, !text.trim() && { backgroundColor: colors.primaryMuted }]}
         >
-          {sending ? (
-            <ActivityIndicator color={colors.textOnPrimary} size="small" />
-          ) : (
-            <Ionicons name="arrow-up" size={20} color={colors.textOnPrimary} />
-          )}
+          <Ionicons name="arrow-up" size={20} color={colors.textOnPrimary} />
         </Pressable>
       </View>
     </View>

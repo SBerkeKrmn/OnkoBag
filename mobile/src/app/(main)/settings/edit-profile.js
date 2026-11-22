@@ -91,7 +91,10 @@ export default function EditProfileScreen() {
         />
         <View style={{ gap: spacing.sm }}>
           <Text variant="label" tone="secondary">
-            Cinsiyet (isteğe bağlı, profilinde gösterilmez)
+            Cinsiyet (isteğe bağlı)
+          </Text>
+          <Text variant="caption" tone="muted">
+            Seçersen profilinde herkese görünür. “Belirtmek istemiyorum” profilinde gösterilmez.
           </Text>
           <View style={styles.wrap}>
             {GENDERS.map((g) => (

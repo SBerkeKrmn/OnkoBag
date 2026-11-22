@@ -308,9 +308,10 @@ Her rapor: yapılanlar, harcanan süre, plana göre durum, sorunlar, öğrenilen
 - **Milestone:** BIL402 — Bitirme II
 
 ```
-- [ ] Şikayet listesi ve içerik gizleme
-- [ ] İyileşen doğrulama listesi
-- [ ] Kullanıcı uyarma / askıya alma
+- [x] Şikayet listesi ve içerik gizleme
+- [x] İyileşen doğrulama listesi
+- [x] Kullanıcı uyarma / askıya alma
+- [x] Rol atama ve işlem kayıtları
 ```
 
 ### #26 Backend: Gerçek e-posta gönderimi (SMTP)

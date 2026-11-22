@@ -25,6 +25,17 @@ describe('Kullanıcılar, profil, takip ve engelleme', () => {
     assert.equal(res.body.data.dmPermission, 'FOLLOWING');
   });
 
+  test('Cinsiyet başkalarına görünür; "belirtmek istemiyorum" ve doğum yılı görünmez', async () => {
+    await api().patch('/api/v1/users/me').set(auth(ali.accessToken)).send({ gender: 'MALE', birthYear: 1990 });
+    const seen = await api().get(`/api/v1/users/${ali.id}`).set(auth(zeynep.accessToken));
+    assert.equal(seen.body.data.gender, 'MALE');
+    assert.equal(seen.body.data.birthYear, undefined);
+
+    await api().patch('/api/v1/users/me').set(auth(ali.accessToken)).send({ gender: 'PREFER_NOT_TO_SAY' });
+    const hidden = await api().get(`/api/v1/users/${ali.id}`).set(auth(zeynep.accessToken));
+    assert.equal(hidden.body.data.gender, null);
+  });
+
   test('İkinci kanser profili eklenince ilgili odaya da katılır', async () => {
     const res = await api()
       .post('/api/v1/users/me/cancer-profiles')

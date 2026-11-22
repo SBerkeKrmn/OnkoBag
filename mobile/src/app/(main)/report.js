@@ -5,19 +5,10 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Banner, Button, Header, Screen, Text, TextField } from '../../components/ui';
 import { reportsApi } from '../../api';
+import { REPORT_REASONS } from '../../lib/moderation';
 import { showError } from '../../lib/errors';
 import { EMERGENCY_NUMBER } from '../../constants/config';
 import { colors, radius, spacing } from '../../constants/theme';
-
-const REASONS = [
-  { value: 'HARASSMENT', label: 'Taciz veya zorbalık', icon: 'hand-left-outline' },
-  { value: 'MISINFORMATION', label: 'Yanlış veya tehlikeli tıbbi bilgi', icon: 'medkit-outline' },
-  { value: 'SELF_HARM', label: 'Kendine zarar verme riski', icon: 'heart-dislike-outline' },
-  { value: 'INAPPROPRIATE_CONTENT', label: 'Uygunsuz veya rahatsız edici içerik', icon: 'eye-off-outline' },
-  { value: 'SPAM', label: 'Spam, reklam veya dolandırıcılık', icon: 'megaphone-outline' },
-  { value: 'IMPERSONATION', label: 'Sahte hesap / kimliğe bürünme', icon: 'person-remove-outline' },
-  { value: 'OTHER', label: 'Diğer', icon: 'ellipsis-horizontal-circle-outline' },
-];
 
 const TARGET_LABELS = {
   USER: 'kullanıcıyı',
@@ -67,7 +58,7 @@ export default function ReportScreen() {
         </Text>
 
         <View style={{ gap: spacing.sm }}>
-          {REASONS.map((r) => {
+          {REPORT_REASONS.map((r) => {
             const selected = reason === r.value;
             return (
               <Pressable

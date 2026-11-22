@@ -1,6 +1,6 @@
 // Gönderi detayı ve yorumlar
 import { useState } from 'react';
-import { Alert, FlatList, Pressable, StyleSheet, View } from 'react-native';
+import { FlatList, Pressable, StyleSheet, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -11,7 +11,8 @@ import ChatInput from '../../../components/ChatInput';
 import { commentsApi, postsApi } from '../../../api';
 import { keys } from '../../../lib/queryClient';
 import { displayNameOf, timeAgo } from '../../../lib/format';
-import { confirmBlock, openReport } from '../../../lib/actions';
+import { confirmAction, confirmBlock, openReport } from '../../../lib/actions';
+import { findPost, patchPost } from '../../../lib/postCache';
 import { showError } from '../../../lib/errors';
 import { useAuth } from '../../../context/AuthContext';
 import { colors, spacing } from '../../../constants/theme';
@@ -46,11 +47,19 @@ function Comment({ comment, onReply, onMenu, isReply = false }) {
 
   return (
     <View style={[styles.comment, isReply && styles.reply]}>
-      <UserLine user={comment.author} meta={timeAgo(comment.createdAt)} size={isReply ? 30 : 36} showBadge={!isReply} />
+      <UserLine
+        user={comment.author}
+        meta={comment.pending ? 'gönderiliyor…' : timeAgo(comment.createdAt)}
+        size={isReply ? 30 : 36}
+        showBadge={!isReply}
+      />
       <Text variant="body" style={{ marginLeft: isReply ? 42 : 48 }}>
         {comment.content}
       </Text>
-      <View style={[styles.commentActions, { marginLeft: isReply ? 42 : 48 }]}>
+      <View
+        style={[styles.commentActions, { marginLeft: isReply ? 42 : 48 }, comment.pending && { opacity: 0.4 }]}
+        pointerEvents={comment.pending ? 'none' : 'auto'}
+      >
         <Pressable onPress={toggleLike} accessibilityRole="button" accessibilityLabel="Yorumu beğen" style={styles.commentAction}>
           <Ionicons name={liked ? 'heart' : 'heart-outline'} size={16} color={liked ? colors.danger : colors.textMuted} />
           {count > 0 ? (
@@ -82,7 +91,13 @@ export default function PostDetailScreen() {
   const [replyTo, setReplyTo] = useState(null);
   const [menuFor, setMenuFor] = useState(null);
 
-  const post = useQuery({ queryKey: keys.post(id), queryFn: async () => (await postsApi.get(id)).data });
+  // Akıştan gelindiyse gönderi önbellekten anında gösterilir, arka planda tazelenir
+  const post = useQuery({
+    queryKey: keys.post(id),
+    queryFn: async () => (await postsApi.get(id)).data,
+    initialData: () => findPost(id) ?? undefined,
+    initialDataUpdatedAt: 0,
+  });
   const comments = useInfiniteQuery({
     queryKey: keys.comments(id),
     queryFn: ({ pageParam }) => postsApi.comments(id, pageParam),
@@ -91,37 +106,88 @@ export default function PostDetailScreen() {
     enabled: Boolean(post.data),
   });
 
+  // Yorum önbelleğinde değişiklik: fn(yorumListesi) => yeni liste (ilk sayfaya uygulanır)
+  const updateComments = (fn) =>
+    queryClient.setQueryData(keys.comments(id), (data) =>
+      data?.pages ? { ...data, pages: data.pages.map((page, i) => (i === data.pages.length - 1 ? { ...page, data: fn(page.data) } : page)) } : data,
+    );
+  const updateAllComments = (fn) =>
+    queryClient.setQueryData(keys.comments(id), (data) =>
+      data?.pages ? { ...data, pages: data.pages.map((page) => ({ ...page, data: fn(page.data) })) } : data,
+    );
+
+  // Yorum sunucu yanıtı beklenmeden listeye eklenir; hata olursa geri alınır ve metin kutuya döner
   const send = async (content) => {
+    const parentId = replyTo?.id;
+    const tempId = `temp-${Date.now()}`;
+    const temp = {
+      id: tempId,
+      postId: id,
+      parentId: parentId ?? null,
+      author: {
+        id: user.id,
+        username: user.username,
+        displayName: user.displayName,
+        avatarUrl: user.avatarUrl,
+        primaryCancer: user.cancerProfiles?.[0] ?? null,
+      },
+      content,
+      status: 'PUBLISHED',
+      likeCount: 0,
+      likedByMe: false,
+      isMine: true,
+      pending: true,
+      createdAt: new Date().toISOString(),
+      ...(parentId ? {} : { replies: [] }),
+    };
+    const insert = (list) =>
+      parentId
+        ? list.map((c) => (c.id === parentId ? { ...c, replies: [...(c.replies ?? []), temp] } : c))
+        : [...list, temp];
+    const replaceTemp = (real) => (list) =>
+      list.map((c) =>
+        c.id === tempId
+          ? { ...real, replies: [] }
+          : c.replies?.some((r) => r.id === tempId)
+            ? { ...c, replies: c.replies.map((r) => (r.id === tempId ? real : r)) }
+            : c,
+      );
+    const dropTemp = (list) =>
+      list.filter((c) => c.id !== tempId).map((c) => (c.replies ? { ...c, replies: c.replies.filter((r) => r.id !== tempId) } : c));
+
+    if (parentId) updateAllComments(insert);
+    else if (comments.data?.pages?.length) updateComments(insert);
+    setReplyTo(null);
+    patchPost(id, (p) => ({ commentCount: p.commentCount + 1 }));
+
     try {
-      await postsApi.addComment(id, { content, parentId: replyTo?.id });
-      setReplyTo(null);
-      await Promise.all([comments.refetch(), post.refetch()]);
-      queryClient.invalidateQueries({ queryKey: ['posts', 'list'] });
-      queryClient.invalidateQueries({ queryKey: keys.feed });
+      const { data } = await postsApi.addComment(id, { content, parentId });
+      updateAllComments(replaceTemp(data));
+      if (!comments.data?.pages?.length) comments.refetch();
       return true;
     } catch (err) {
+      updateAllComments(dropTemp);
+      patchPost(id, (p) => ({ commentCount: Math.max(0, p.commentCount - 1) }));
       showError(err, 'Yorum gönderilemedi');
       return false;
     }
   };
 
   const deleteComment = (comment) =>
-    Alert.alert('Yorum silinsin mi?', undefined, [
-      { text: 'Vazgeç', style: 'cancel' },
-      {
-        text: 'Sil',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await commentsApi.remove(comment.id);
-            comments.refetch();
-            post.refetch();
-          } catch (err) {
-            showError(err);
-          }
-        },
+    confirmAction({
+      title: 'Yorum silinsin mi?',
+      confirmText: 'Sil',
+      destructive: true,
+      onConfirm: async () => {
+        try {
+          await commentsApi.remove(comment.id);
+          comments.refetch();
+          patchPost(id, (p) => ({ commentCount: Math.max(0, p.commentCount - 1) }));
+        } catch (err) {
+          showError(err);
+        }
       },
-    ]);
+    });
 
   if (post.isLoading) return <Screen header={<Header back title="Gönderi" />}><LoadingView /></Screen>;
   if (post.error) {
