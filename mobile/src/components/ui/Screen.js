@@ -1,5 +1,6 @@
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import KeyboardAwareView from './KeyboardAwareView';
 import { colors, spacing } from '../../constants/theme';
 
 /**
@@ -37,10 +38,10 @@ export default function Screen({
     <SafeAreaView style={[styles.flex, { backgroundColor: background }]} edges={edges}>
       {header}
       {keyboard ? (
-        <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <KeyboardAwareView>
           {body}
           {footer}
-        </KeyboardAvoidingView>
+        </KeyboardAwareView>
       ) : (
         <>
           {body}

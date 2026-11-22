@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { ActivityIndicator, Platform, Pressable, StyleSheet, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { Text } from './ui';
+import { Text, useKeyboardInset } from './ui';
 import { colors, fonts, fontSize, radius, spacing, hitSlop } from '../constants/theme';
 
 export default function ChatInput({
@@ -17,7 +17,10 @@ export default function ChatInput({
   disabled = false,
   disabledText,
 }) {
-  const insets = useSafeAreaInsets();
+  const safeInsets = useSafeAreaInsets();
+  // Klavye açıkken alttaki çentik/gezinme boşluğu klavyenin altında kalır; tekrar eklenmez
+  const keyboardOpen = useKeyboardInset() > 0;
+  const insets = keyboardOpen ? { bottom: 0 } : safeInsets;
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
 

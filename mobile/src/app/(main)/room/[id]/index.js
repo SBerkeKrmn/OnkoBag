@@ -1,9 +1,9 @@
 // Genel sohbet odası
 import { useMemo, useState } from 'react';
-import { Alert, KeyboardAvoidingView, Platform, StyleSheet, View } from 'react-native';
+import { Alert, StyleSheet, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { ActionSheet, EmptyState, ErrorView, Header, IconButton, LoadingView, Screen, Text } from '../../../../components/ui';
+import { ActionSheet, EmptyState, ErrorView, Header, IconButton, KeyboardAwareView, LoadingView, Screen, Text } from '../../../../components/ui';
 import MessageList from '../../../../components/MessageList';
 import ChatInput from '../../../../components/ChatInput';
 import useChat, { useTypingEmitter, useTypingIndicator } from '../../../../hooks/useChat';
@@ -124,7 +124,7 @@ export default function RoomScreen() {
         />
       }
     >
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <KeyboardAwareView>
         <View style={styles.body}>
           {chat.loading ? (
             <LoadingView />
@@ -161,7 +161,7 @@ export default function RoomScreen() {
               : 'Mesaj göndermek için e-posta adresini doğrulaman gerekiyor.'
           }
         />
-      </KeyboardAvoidingView>
+      </KeyboardAwareView>
 
       <ActionSheet visible={Boolean(selected)} onClose={() => setSelected(null)} options={messageOptions} />
       <ActionSheet

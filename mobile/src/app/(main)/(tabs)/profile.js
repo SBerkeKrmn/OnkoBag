@@ -7,10 +7,11 @@ import ProfileHeader from '../../../components/ProfileHeader';
 import PostCard from '../../../components/PostCard';
 import useUserPosts from '../../../hooks/useUserPosts';
 import { useAuth } from '../../../context/AuthContext';
+import { confirmLogout } from '../../../lib/actions';
 import { colors, spacing } from '../../../constants/theme';
 
 export default function ProfileScreen() {
-  const { user, refreshUser } = useAuth();
+  const { user, refreshUser, logout } = useAuth();
   const posts = useUserPosts(user?.id);
 
   // Sekmeye her dönüşte sayaçlar güncel olsun
@@ -68,6 +69,11 @@ export default function ProfileScreen() {
           ) : (
             <EmptyState compact icon="create-outline" title="Henüz gönderin yok" message="Deneyimini paylaşmak birine umut olabilir." actionLabel="İlk gönderini paylaş" onAction={() => router.push('/post/new')} />
           )
+        }
+        ListFooterComponent={
+          <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.xl }}>
+            <Button title="Çıkış yap" icon="log-out-outline" variant="outline" size="md" onPress={() => confirmLogout(logout)} />
+          </View>
         }
         onEndReached={() => posts.hasNextPage && posts.fetchNextPage()}
         refreshControl={

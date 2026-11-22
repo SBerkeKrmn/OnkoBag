@@ -1,4 +1,5 @@
-import { Alert, Linking, StyleSheet, View } from 'react-native';
+import { Linking, StyleSheet, View } from 'react-native';
+import { confirmLogout } from '../../../lib/actions';
 import Constants from 'expo-constants';
 import { router } from 'expo-router';
 import { Header, Screen, Text } from '../../../components/ui';
@@ -12,12 +13,6 @@ const DM_LABELS = { EVERYONE: 'Herkes', FOLLOWING: 'Takip ettiklerim', NOBODY: '
 
 export default function SettingsScreen() {
   const { user, logout } = useAuth();
-
-  const confirmLogout = () =>
-    Alert.alert('Çıkış yapılsın mı?', undefined, [
-      { text: 'Vazgeç', style: 'cancel' },
-      { text: 'Çıkış yap', style: 'destructive', onPress: logout },
-    ]);
 
   return (
     <Screen scroll header={<Header back title="Ayarlar" />}>
@@ -69,7 +64,7 @@ export default function SettingsScreen() {
         </SettingsGroup>
 
         <SettingsGroup>
-          <SettingsRow icon="log-out-outline" label="Çıkış yap" onPress={confirmLogout} />
+          <SettingsRow icon="log-out-outline" label="Çıkış yap" onPress={() => confirmLogout(logout)} />
           <SettingsRow icon="trash-outline" label="Hesabımı sil" destructive onPress={() => router.push('/settings/delete-account')} last />
         </SettingsGroup>
 

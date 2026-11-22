@@ -1,10 +1,10 @@
 // Gönderi detayı ve yorumlar
 import { useState } from 'react';
-import { Alert, FlatList, KeyboardAvoidingView, Platform, Pressable, StyleSheet, View } from 'react-native';
+import { Alert, FlatList, Pressable, StyleSheet, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ActionSheet, EmptyState, ErrorView, Header, LoadingView, Screen, Text } from '../../../components/ui';
+import { ActionSheet, EmptyState, ErrorView, Header, KeyboardAwareView, LoadingView, Screen, Text } from '../../../components/ui';
 import PostCard from '../../../components/PostCard';
 import UserLine from '../../../components/UserLine';
 import ChatInput from '../../../components/ChatInput';
@@ -150,7 +150,7 @@ export default function PostDetailScreen() {
 
   return (
     <Screen padded={false} edges={['top']} header={<Header back title="Gönderi" />}>
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <KeyboardAwareView>
         <FlatList
           data={items}
           keyExtractor={(c) => c.id}
@@ -196,7 +196,7 @@ export default function PostDetailScreen() {
           disabled={!user?.emailVerified}
           disabledText="Yorum yapmak için e-posta adresini doğrulaman gerekiyor."
         />
-      </KeyboardAvoidingView>
+      </KeyboardAwareView>
       <ActionSheet visible={Boolean(menuFor)} onClose={() => setMenuFor(null)} options={menuOptions} />
     </Screen>
   );
