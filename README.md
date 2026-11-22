@@ -105,4 +105,5 @@ npm test
 - [x] Veritabanı şeması (22 tablo, 3 migration, seed)
 - [x] Proje iskeleti (backend + mobil)
 - [x] Backend: REST API (10 modül) + Socket.io + 61 entegrasyon testi
-- [ ] Mobil uygulama
+- [x] Mobil uygulama: kayıt/giriş, akış, gönderiler, sohbet odaları, özel mesajlar, profil, ayarlar, şikayet/engelleme, yasal metinler
+- [ ] Push bildirimleri, moderatör ekranları, mağaza yayını

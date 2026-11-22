@@ -73,18 +73,26 @@ export default function PostCard({ post, detail = false, onDeleted }) {
           : []),
       ];
 
+  // Kartın tamamı değil yalnızca içerik bölümü dokunulabilir: iç içe düğme
+  // olmaması ekran okuyucular (VoiceOver/TalkBack) için gereklidir
+  const Body = detail ? View : Pressable;
+  const bodyProps = detail
+    ? {}
+    : {
+        onPress: () => router.push(`/post/${post.id}`),
+        accessibilityRole: 'button',
+        accessibilityLabel: `${post.title ? `${post.title}. ` : ''}Gönderiyi aç`,
+      };
+
   return (
-    <Card
-      onPress={detail ? undefined : () => router.push(`/post/${post.id}`)}
-      style={[styles.card, detail && styles.detailCard]}
-      accessibilityLabel={detail ? undefined : `${post.title ?? ''} gönderisini aç`}
-    >
+    <Card style={[styles.card, detail && styles.detailCard]}>
       <UserLine
         user={post.author}
         meta={timeAgo(post.createdAt)}
         right={<IconButton icon="ellipsis-horizontal" label="Gönderi seçenekleri" onPress={() => setMenuOpen(true)} color={colors.textMuted} size={20} />}
       />
 
+      <Body style={styles.body} {...bodyProps}>
       <View style={styles.tags}>
         <View style={styles.category}>
           <Ionicons name={category.icon} size={13} color={colors.primaryDark} />
@@ -108,6 +116,7 @@ export default function PostCard({ post, detail = false, onDeleted }) {
       ) : null}
 
       <MediaGrid media={post.media} />
+      </Body>
 
       <View style={styles.actions}>
         <Pressable
@@ -143,6 +152,7 @@ export default function PostCard({ post, detail = false, onDeleted }) {
 
 const styles = StyleSheet.create({
   card: { gap: spacing.md, marginHorizontal: spacing.lg },
+  body: { gap: spacing.md },
   detailCard: { marginHorizontal: 0, borderRadius: 0, borderWidth: 0, shadowOpacity: 0, elevation: 0 },
   tags: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   category: {

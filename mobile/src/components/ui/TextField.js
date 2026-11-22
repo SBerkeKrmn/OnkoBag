@@ -1,5 +1,5 @@
 import { forwardRef, useState } from 'react';
-import { Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Text from './Text';
 import { colors, fonts, fontSize, radius, spacing, hitSlop } from '../../constants/theme';
@@ -93,6 +93,8 @@ const styles = StyleSheet.create({
   multilineField: { alignItems: 'flex-start', paddingVertical: spacing.md },
   input: {
     flex: 1,
+    // Web önizlemesinde tarayıcı odak çerçevesini kapat (odak, kenarlık rengiyle gösteriliyor)
+    ...(Platform.OS === 'web' ? { outlineStyle: 'none' } : {}),
     fontFamily: fonts.medium,
     fontSize: fontSize.md,
     color: colors.text,

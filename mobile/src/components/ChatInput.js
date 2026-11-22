@@ -1,6 +1,6 @@
 // Mesaj / yorum yazma çubuğu. Yanıtlanan öğe varsa üstünde gösterilir.
 import { useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { ActivityIndicator, Platform, Pressable, StyleSheet, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Text } from './ui';
@@ -108,6 +108,7 @@ const styles = StyleSheet.create({
   attach: { height: 42, justifyContent: 'center', paddingHorizontal: 2 },
   input: {
     flex: 1,
+    ...(Platform.OS === 'web' ? { outlineStyle: 'none' } : {}),
     minHeight: 42,
     maxHeight: 120,
     paddingHorizontal: spacing.lg,
