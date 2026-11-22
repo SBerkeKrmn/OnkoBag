@@ -26,11 +26,61 @@ Aktif tedavi sürecindeki kanser hastalarını, aynı kanser türünü atlatmı�
 
 ```
 OnkoBag/
-├── backend/          # Node.js + Express API ve Socket.io sunucusu
-│   └── prisma/       # Veritabanı şeması, ek SQL kısıtları, seed
-├── mobile/           # React Native uygulaması (yakında)
-└── docs/             # Tasarım dokümanları
+├── docker-compose.yml        # Yerel PostgreSQL 16
+├── backend/                  # Node.js + Express API ve Socket.io sunucusu
+│   ├── prisma/
+│   │   ├── schema.prisma     # Veri modeli
+│   │   ├── migrations/       # Veritabanı migration'ları
+│   │   ├── sql/              # Prisma dışı ek kısıtlar (CHECK, kısmi indeks)
+│   │   └── seed.js           # Kanser türleri + varsayılan sohbet odaları
+│   └── src/
+│       ├── config/           # Ortam değişkenleri (zod ile doğrulanır)
+│       ├── lib/              # Prisma istemcisi
+│       ├── middlewares/      # JWT doğrulama, rol kontrolü, hata yönetimi
+│       ├── modules/          # Özellik modülleri (auth, posts, rooms ...)
+│       ├── routes/           # /api/v1 router'ı
+│       ├── sockets/          # Socket.io sunucusu
+│       ├── utils/
+│       ├── app.js            # Express uygulaması
+│       └── server.js         # Giriş noktası (HTTP + Socket.io)
+├── mobile/                   # React Native (Expo) uygulaması
+│   └── src/
+│       ├── app/              # Ekranlar (Expo Router, dosya tabanlı)
+│       ├── api/              # Backend istemcisi
+│       └── constants/        # Tema ve yapılandırma
+└── docs/                     # Tasarım dokümanları
 ```
+
+## Kurulum
+
+Gereksinimler: Node.js 20+, Docker Desktop, telefonda [Expo Go](https://expo.dev/go) (veya Android emülatörü).
+
+```bash
+# 1. Veritabanını başlat
+docker compose up -d
+
+# 2. Backend
+cd backend
+cp .env.example .env          # JWT secret değerlerini değiştirin
+npm install
+npx prisma migrate deploy     # tabloları oluştur
+npx prisma db seed            # kanser türleri ve odalar
+npm run dev                   # http://localhost:3000/api/v1/health
+
+# 3. Mobil uygulama (ayrı terminalde)
+cd mobile
+npm install
+npx expo start
+```
+
+> Gerçek cihazda test ederken `mobile/app.json` içindeki `extra.apiUrl` değerini bilgisayarınızın yerel IP adresiyle değiştirin (ör. `http://192.168.1.20:3000/api/v1`).
+
+## API
+
+| Metot | Uç nokta | Açıklama |
+|---|---|---|
+| GET | `/api/v1/health` | Sunucu ve veritabanı durumu |
+| GET | `/api/v1/cancer-types` | Aktif kanser türleri listesi |
 
 ## Dokümantasyon
 
@@ -38,7 +88,7 @@ OnkoBag/
 
 ## Güncel Durum
 
-- [x] Veritabanı şeması tasarlandı
-- [ ] Proje iskeleti
+- [x] Veritabanı şeması tasarlandı (22 tablo, migration + seed)
+- [x] Proje iskeleti (backend + mobil)
 - [ ] Backend (REST API + Socket.io)
 - [ ] Mobil uygulama
