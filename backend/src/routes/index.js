@@ -18,5 +18,6 @@ router.use('/users', require('../modules/users/users.routes'));
 router.use('/cancer-types', require('../modules/cancer-types/cancerTypes.routes'));
 router.use('/media', require('../modules/media/media.routes'));
 router.use('/rooms', require('../modules/rooms/rooms.routes'));
+router.use('/conversations', require('../modules/conversations/conversations.routes'));
 
 module.exports = router;
