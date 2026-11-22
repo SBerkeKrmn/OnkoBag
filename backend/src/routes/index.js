@@ -20,4 +20,9 @@ router.use('/media', require('../modules/media/media.routes'));
 router.use('/rooms', require('../modules/rooms/rooms.routes'));
 router.use('/conversations', require('../modules/conversations/conversations.routes'));
 
+const { posts, comments } = require('../modules/posts/posts.routes');
+
+router.use('/posts', posts);
+router.use('/comments', comments);
+
 module.exports = router;
