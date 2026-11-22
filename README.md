@@ -104,6 +104,7 @@ npm test
 - [API ve Socket.io olay referansı](docs/api.md)
 - [Google ve Apple ile giriş kurulumu](docs/sosyal-giris-kurulum.md)
 - [E-posta (SMTP) kurulumu](docs/e-posta-kurulum.md)
+- [Yayın: Render'a kurulum ve test sürümü dağıtma](docs/yayin.md)
 
 ## Güncel Durum
 

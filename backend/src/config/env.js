@@ -30,11 +30,17 @@ const schema = z.object({
   // Apple ile giriş: kabul edilecek "aud" değerleri. host.exp.Exponent = Expo Go ile geliştirme
   APPLE_AUDIENCES: z.string().default('com.onkobag.app,host.exp.Exponent'),
 
+  // disk: UPLOAD_DIR klasörü (geliştirme) · database: görseller PostgreSQL'de (bulut, kalıcı disk yoksa)
+  STORAGE_DRIVER: z.enum(['disk', 'database']).default('disk'),
   UPLOAD_DIR: z.string().default('uploads'),
   MAX_UPLOAD_MB: z.coerce.number().positive().default(5),
 });
 
-const parsed = schema.safeParse(process.env);
+// Render gibi servisler dış adresi kendisi verir; PUBLIC_URL ayrıca girilmediyse o kullanılır
+const parsed = schema.safeParse({
+  ...process.env,
+  PUBLIC_URL: process.env.PUBLIC_URL || process.env.RENDER_EXTERNAL_URL || undefined,
+});
 
 if (!parsed.success) {
   console.error('Geçersiz ortam değişkenleri:', JSON.stringify(z.treeifyError(parsed.error), null, 2));

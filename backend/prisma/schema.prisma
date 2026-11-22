@@ -610,12 +610,25 @@ model Media {
   post          Post?          @relation(fields: [postId], references: [id], onDelete: Cascade)
   roomMessage   RoomMessage?   @relation(fields: [roomMessageId], references: [id], onDelete: Cascade)
   directMessage DirectMessage? @relation(fields: [directMessageId], references: [id], onDelete: Cascade)
+  blob          MediaBlob?
 
   @@index([postId])
   @@index([roomMessageId])
   @@index([directMessageId])
   @@index([uploaderId])
   @@map("media")
+}
+
+/// STORAGE_DRIVER=database iken görselin kendisi. Bulut sunucularda disk kalıcı
+/// olmadığından (yeniden başlatmada silinir) görseller veritabanında tutulur.
+/// Ayrı tabloda durur; böylece medya listelenirken baytlar okunmaz.
+model MediaBlob {
+  mediaId String @id @map("media_id") @db.Uuid
+  data    Bytes
+
+  media Media @relation(fields: [mediaId], references: [id], onDelete: Cascade)
+
+  @@map("media_blobs")
 }
 
 // =============================================================================

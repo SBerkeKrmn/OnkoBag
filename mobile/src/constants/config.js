@@ -8,10 +8,14 @@ function normalizeUrl(url) {
   return /^https?:\/\//i.test(trimmed) ? trimmed : `http://${trimmed}`;
 }
 
-// Backend adresi app.json > expo.extra.apiUrl üzerinden gelir.
-// Not: Gerçek cihazda "localhost" bilgisayarı göstermez; bilgisayarın yerel IP
-// adresi (ör. http://192.168.1.20:3000/api/v1) kullanılmalıdır.
-export const API_URL = normalizeUrl(extra.apiUrl ?? 'http://localhost:3000/api/v1');
+// Backend adresi:
+//  1. EXPO_PUBLIC_API_URL (EAS build/update profillerinde bulut sunucusunun adresi; eas.json)
+//  2. app.json > expo.extra.apiUrl (yerel geliştirme: bilgisayarın yerel IP adresi)
+// Not: Gerçek cihazda "localhost" bilgisayarı göstermez; yerel IP
+// (ör. http://192.168.1.20:3000/api/v1) kullanılmalıdır.
+export const API_URL = normalizeUrl(
+  process.env.EXPO_PUBLIC_API_URL || extra.apiUrl || 'http://localhost:3000/api/v1',
+);
 
 /** Socket.io sunucusu API ile aynı adreste, /api/v1 öneki olmadan çalışır */
 export const SOCKET_URL = API_URL.replace(/\/api\/v\d+\/?$/, '');

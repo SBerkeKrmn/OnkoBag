@@ -8,6 +8,7 @@ const rateLimit = require('express-rate-limit');
 const env = require('./config/env');
 const routes = require('./routes');
 const { notFound, errorHandler } = require('./middlewares/errorHandler');
+const { serveStored } = require('./modules/media/media.service');
 
 // Mesaj kimlikleri BIGINT; JSON'da hassasiyet kaybı olmaması için string olarak döner
 // eslint-disable-next-line no-extend-native
@@ -37,6 +38,8 @@ app.use(
 
 // Yüklenen görseller (dosya adları tahmin edilemez UUID'lerdir)
 app.use('/uploads', express.static(env.uploadDir, { maxAge: '7d', index: false }));
+// Diskte yoksa veritabanından (STORAGE_DRIVER=database)
+app.get('/uploads/:key', serveStored);
 
 app.use('/api/v1', routes);
 
