@@ -75,7 +75,9 @@ async function send(path, { method = 'GET', body, form, auth = true }) {
       headers,
       body: form ?? (body !== undefined ? JSON.stringify(body) : undefined),
     });
-  } catch {
+  } catch (err) {
+    // Geliştirmede asıl nedeni konsolda göster (ağ hatası mı, istek mi kurulamadı?)
+    if (__DEV__) console.warn(`İstek başarısız: ${method} ${path}`, err?.message);
     throw new ApiError('Sunucuya ulaşılamadı. İnternet bağlantınızı kontrol edin.', { code: 'NETWORK_ERROR' });
   }
 }
@@ -107,19 +109,60 @@ export async function request(path, opts = {}) {
   return payload;
 }
 
+/**
+ * Telefonda dosya yükleme XMLHttpRequest ile yapılır: Expo SDK 58'in global
+ * fetch'i (expo/fetch) React Native'in { uri, name, type } dosya parçasını
+ * desteklemez ve istek gönderilmeden hata verir. XHR bu biçimi yerel olarak
+ * dosyadan okuyup gönderir.
+ */
+function xhrUpload(path, form) {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', `${API_URL}${path}`);
+    xhr.setRequestHeader('Accept', 'application/json');
+    if (session.accessToken) xhr.setRequestHeader('Authorization', `Bearer ${session.accessToken}`);
+    xhr.timeout = 120_000;
+    xhr.onload = () => {
+      let payload = null;
+      try {
+        payload = JSON.parse(xhr.responseText);
+      } catch {
+        // gövde JSON değil
+      }
+      resolve({ status: xhr.status, payload });
+    };
+    xhr.onerror = () => reject(new ApiError('Sunucuya ulaşılamadı. İnternet bağlantınızı kontrol edin.', { code: 'NETWORK_ERROR' }));
+    xhr.ontimeout = () => reject(new ApiError('Yükleme zaman aşımına uğradı. Daha küçük bir görsel deneyin.', { code: 'TIMEOUT' }));
+    xhr.send(form);
+  });
+}
+
 /** Görsel yükleme (multipart/form-data). asset: expo-image-picker sonucu */
 export async function uploadImage(asset) {
-  const form = new FormData();
   const name = asset.fileName ?? `gorsel-${Date.now()}.jpg`;
   const type = asset.mimeType ?? 'image/jpeg';
 
   if (Platform.OS === 'web') {
+    const form = new FormData();
     const blob = await (await fetch(asset.uri)).blob();
     form.append('file', blob, name);
-  } else {
-    form.append('file', { uri: asset.uri, name, type });
+    const res = await request('/media', { method: 'POST', form });
+    return res.data;
   }
 
-  const res = await request('/media', { method: 'POST', form });
-  return res.data;
+  const makeForm = () => {
+    const form = new FormData();
+    form.append('file', { uri: asset.uri, name, type });
+    return form;
+  };
+
+  let { status, payload } = await xhrUpload('/media', makeForm());
+  if (status === 401 && session.refreshToken && (await refreshSession())) {
+    ({ status, payload } = await xhrUpload('/media', makeForm()));
+  }
+  if (status < 200 || status >= 300) {
+    const err = payload?.error ?? {};
+    throw new ApiError(err.message ?? 'Görsel yüklenemedi', { status, code: err.code, details: err.details });
+  }
+  return payload.data;
 }
