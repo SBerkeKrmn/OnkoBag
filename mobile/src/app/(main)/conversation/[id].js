@@ -1,5 +1,5 @@
 // Birebir özel sohbet
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Alert, Pressable, StyleSheet, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -14,6 +14,7 @@ import { displayNameOf } from '../../../lib/format';
 import { confirmBlock, openReport } from '../../../lib/actions';
 import { showError } from '../../../lib/errors';
 import { pickAndUploadImage } from '../../../lib/pickImage';
+import { setActiveConversation } from '../../../lib/pushNotifications';
 import { useAuth } from '../../../context/AuthContext';
 import { colors, spacing } from '../../../constants/theme';
 
@@ -30,6 +31,12 @@ export default function ConversationScreen() {
     queryFn: async () => (await conversationsApi.get(id)).data,
   });
   const chat = useChat('dm', id, user.id);
+
+  // Bu sohbet açıkken onun telefon bildirimleri gösterilmez
+  useEffect(() => {
+    setActiveConversation(id);
+    return () => setActiveConversation(null);
+  }, [id]);
   const other = conversation.data?.otherUser;
 
   const typing = useTypingIndicator('dm:typing', (p) => p.conversationId === id);

@@ -62,6 +62,25 @@ eas submit --platform ios
 App Store Connect → TestFlight'tan test kullanıcılarını e-postayla veya herkese açık bağlantıyla davet edin
 (harici test için Apple kısa bir inceleme yapar).
 
+## 3. Telefon bildirimleri (push)
+
+Backend, bildirimlerde ve özel mesajlarda Expo Push servisine gönderir; uygulama giriş yapınca
+izin isteyip cihazı kaydeder. **Expo Go'da çalışmaz**, APK / development build / TestFlight gerekir.
+
+### Android (Firebase Cloud Messaging) — bir kez
+1. https://console.firebase.google.com → **Proje ekle** (ör. "OnkoBag").
+2. Projeye **Android uygulaması** ekleyin: paket adı `com.onkobag.app` → `google-services.json` dosyasını indirin
+   ve `mobile/google-services.json` olarak kaydedin (bu dosya gizli değildir, depoya eklenebilir).
+3. `mobile/app.json` → `android` bölümüne ekleyin: `"googleServicesFile": "./google-services.json"`
+4. Firebase → Proje ayarları → **Hizmet hesapları** → **Yeni özel anahtar oluştur** (JSON). Bu dosya gizlidir,
+   depoya eklemeyin. Yükleyin: `cd mobile; eas credentials` → Android → production/preview →
+   Google Service Account → **Push Notifications (FCM V1)** → JSON dosyasını seçin.
+5. Yeni APK alın: `eas build --profile preview --platform android`
+
+### iPhone (APNs)
+Ücretli Apple Developer hesabı gerekir. `eas build` sırasında "push notifications" sorusuna **Yes** deyin;
+EAS APNs anahtarını kendisi oluşturur.
+
 ### Expo Go
 Expo Go ile açmak yalnızca geliştirme sunucusu (bilgisayarınızda `npx expo start --tunnel`) çalışırken
 mümkündür ve iPhone'da Expo Go yalnızca sizin Expo hesabınızla giriş yapılmış cihazlarda açar.

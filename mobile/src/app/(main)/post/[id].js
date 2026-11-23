@@ -8,6 +8,7 @@ import { ActionSheet, EmptyState, ErrorView, Header, KeyboardAwareView, LoadingV
 import PostCard from '../../../components/PostCard';
 import UserLine from '../../../components/UserLine';
 import ChatInput from '../../../components/ChatInput';
+import EditTextDialog from '../../../components/EditTextDialog';
 import { commentsApi, postsApi } from '../../../api';
 import { keys } from '../../../lib/queryClient';
 import { displayNameOf, timeAgo } from '../../../lib/format';
@@ -49,7 +50,7 @@ function Comment({ comment, onReply, onMenu, isReply = false }) {
     <View style={[styles.comment, isReply && styles.reply]}>
       <UserLine
         user={comment.author}
-        meta={comment.pending ? 'gönderiliyor…' : timeAgo(comment.createdAt)}
+        meta={comment.pending ? 'gönderiliyor…' : `${timeAgo(comment.createdAt)}${comment.editedAt ? ' · düzenlendi' : ''}`}
         size={isReply ? 30 : 36}
         showBadge={!isReply}
       />
@@ -90,6 +91,7 @@ export default function PostDetailScreen() {
   const queryClient = useQueryClient();
   const [replyTo, setReplyTo] = useState(null);
   const [menuFor, setMenuFor] = useState(null);
+  const [editingComment, setEditingComment] = useState(null);
 
   // Akıştan gelindiyse gönderi önbellekten anında gösterilir, arka planda tazelenir
   const post = useQuery({
@@ -173,6 +175,18 @@ export default function PostDetailScreen() {
     }
   };
 
+  const saveComment = async (content) => {
+    try {
+      const { data } = await commentsApi.update(editingComment.id, { content });
+      const apply = (c) => (c.id === data.id ? { ...c, content: data.content, editedAt: data.editedAt } : c);
+      updateAllComments((list) => list.map((c) => ({ ...apply(c), ...(c.replies ? { replies: c.replies.map(apply) } : {}) })));
+      return true;
+    } catch (err) {
+      showError(err, 'Yorum güncellenemedi');
+      return false;
+    }
+  };
+
   const deleteComment = (comment) =>
     confirmAction({
       title: 'Yorum silinsin mi?',
@@ -205,7 +219,10 @@ export default function PostDetailScreen() {
   const items = comments.data?.pages.flatMap((p) => p.data) ?? [];
   const menuOptions = menuFor
     ? menuFor.isMine
-      ? [{ label: 'Yorumu sil', icon: 'trash-outline', destructive: true, onPress: () => deleteComment(menuFor) }]
+      ? [
+          { label: 'Yorumu düzenle', icon: 'create-outline', onPress: () => setEditingComment(menuFor) },
+          { label: 'Yorumu sil', icon: 'trash-outline', destructive: true, onPress: () => deleteComment(menuFor) },
+        ]
       : [
           { label: 'Yorumu şikayet et', icon: 'flag-outline', onPress: () => openReport('COMMENT', menuFor.id) },
           ...(menuFor.author
@@ -264,6 +281,13 @@ export default function PostDetailScreen() {
         />
       </KeyboardAwareView>
       <ActionSheet visible={Boolean(menuFor)} onClose={() => setMenuFor(null)} options={menuOptions} />
+      <EditTextDialog
+        visible={Boolean(editingComment)}
+        title="Yorumu düzenle"
+        initialValue={editingComment?.content ?? ''}
+        onSave={saveComment}
+        onClose={() => setEditingComment(null)}
+      />
     </Screen>
   );
 }

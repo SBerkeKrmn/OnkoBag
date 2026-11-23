@@ -6,6 +6,7 @@ import { setSession, setSessionHandlers, getRefreshToken } from '../api/client';
 import { getItem, setItem, removeItem } from '../lib/storage';
 import { queryClient } from '../lib/queryClient';
 import { signOutSocial } from '../lib/socialAuth';
+import { registerForPushNotifications, unregisterPushNotifications } from '../lib/pushNotifications';
 
 const TOKENS_KEY = 'onkobag.session';
 
@@ -98,7 +99,14 @@ export function AuthProvider({ children }) {
     [startSession],
   );
 
+  // Oturum açıkken telefon bildirimleri için cihaz kaydedilir
+  useEffect(() => {
+    if (status !== 'signedIn') return;
+    registerForPushNotifications().catch((err) => console.warn('Bildirim kaydı yapılamadı:', err?.message));
+  }, [status]);
+
   const logout = useCallback(async () => {
+    await unregisterPushNotifications();
     const refreshToken = getRefreshToken();
     if (refreshToken) await authApi.logout(refreshToken).catch(() => {});
     await signOutSocial();

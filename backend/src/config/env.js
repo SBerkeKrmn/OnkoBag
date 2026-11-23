@@ -33,6 +33,8 @@ const schema = z.object({
   // disk: UPLOAD_DIR klasörü (geliştirme) · database: görseller PostgreSQL'de (bulut, kalıcı disk yoksa)
   STORAGE_DRIVER: z.enum(['disk', 'database']).default('disk'),
   UPLOAD_DIR: z.string().default('uploads'),
+  // Expo panelinde "Enhanced push security" açılırsa gerekir; aksi halde boş bırakılır
+  EXPO_ACCESS_TOKEN: z.string().optional(),
   MAX_UPLOAD_MB: z.coerce.number().positive().default(5),
 });
 

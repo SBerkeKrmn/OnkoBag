@@ -5,6 +5,7 @@
 // - Mesajlar her iki tarafın user:<id> soket kanalına iletilir
 const prisma = require('../../lib/prisma');
 const realtime = require('../../lib/realtime');
+const push = require('../../lib/push');
 const ApiError = require('../../utils/ApiError');
 const { isBlockedBetween } = require('../../lib/blocks');
 const { publicUserSelect, formatPublicUser, mediaSelect } = require('../../lib/selects');
@@ -184,6 +185,16 @@ async function sendMessage(userId, conversationId, { content, mediaIds = [] }) {
   const formatted = formatMessage(message);
   realtime.emitToUser(userId, 'dm:message:new', formatted);
   realtime.emitToUser(other.userId, 'dm:message:new', formatted);
+
+  // Sessize alınmamışsa alıcının telefonuna bildirim
+  if (!other.isMuted) {
+    const sender = message.sender ? message.sender.displayName || message.sender.username : 'Yeni mesaj';
+    push.sendToUsersSafe([other.userId], {
+      title: sender,
+      body: content || '📷 Görsel',
+      data: { url: `/conversation/${conversationId}`, conversationId },
+    });
+  }
   return formatted;
 }
 

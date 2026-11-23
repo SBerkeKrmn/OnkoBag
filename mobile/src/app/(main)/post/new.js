@@ -1,7 +1,9 @@
-// Yeni gönderi (modal): topluluk, kategori, başlık, metin, en fazla 4 görsel
+// Yeni gönderi (modal): topluluk, kategori, başlık, metin, en fazla 4 görsel.
+// ?edit=<gönderiId> ile açılırsa mevcut gönderiyi düzenler (konu, başlık, metin;
+// topluluk ve görseller paylaşımdan sonra değiştirilemez).
 import { useState } from 'react';
 import { Alert, Image, Pressable, ScrollView, StyleSheet, View } from 'react-native';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { Banner, Button, Chip, Header, Screen, Text, TextField } from '../../../components/ui';
@@ -9,23 +11,27 @@ import { mediaApi, postsApi } from '../../../api';
 import { useAuth } from '../../../context/AuthContext';
 import { POST_CATEGORIES } from '../../../lib/format';
 import { showError } from '../../../lib/errors';
-import { addNewPost } from '../../../lib/postCache';
+import { addNewPost, findPost, patchPost } from '../../../lib/postCache';
 import { colors, radius, spacing } from '../../../constants/theme';
 
 const MAX_IMAGES = 4;
 
 export default function NewPostScreen() {
   const { user, refreshUser } = useAuth();
+  const { edit } = useLocalSearchParams();
+  const [editing] = useState(() => (edit ? findPost(String(edit)) : null));
   const communities = user?.cancerProfiles ?? [];
 
-  const [cancerTypeId, setCancerTypeId] = useState(communities[0]?.cancerType.id ?? null);
-  const [category, setCategory] = useState('EXPERIENCE');
-  const [title, setTitle] = useState('');
-  const [content, setContent] = useState('');
+  const [cancerTypeId, setCancerTypeId] = useState(editing?.cancerType?.id ?? communities[0]?.cancerType.id ?? null);
+  const [category, setCategory] = useState(editing?.category ?? 'EXPERIENCE');
+  const [title, setTitle] = useState(editing?.title ?? '');
+  const [content, setContent] = useState(editing?.content ?? '');
   const [images, setImages] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  const dirty = content.trim() || title.trim() || images.length;
+  const dirty = editing
+    ? content !== editing.content || title !== (editing.title ?? '') || category !== editing.category
+    : content.trim() || title.trim() || images.length;
 
   const close = () => {
     if (!dirty) return router.back();
@@ -52,6 +58,22 @@ export default function NewPostScreen() {
       return;
     }
     setLoading(true);
+    if (editing) {
+      try {
+        const { data } = await postsApi.update(editing.id, {
+          category,
+          title: title.trim() || null,
+          content: content.trim(),
+        });
+        patchPost(editing.id, data);
+        router.back();
+      } catch (err) {
+        showError(err, 'Gönderi güncellenemedi');
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
     try {
       // Görseller sırayla değil aynı anda yüklenir
       const uploaded = await Promise.all(images.map((asset) => mediaApi.upload(asset)));
@@ -79,11 +101,11 @@ export default function NewPostScreen() {
       scroll
       header={
         <Header
-          title="Yeni gönderi"
+          title={editing ? 'Gönderiyi düzenle' : 'Yeni gönderi'}
           left={<Button title="Vazgeç" variant="ghost" size="sm" fullWidth={false} onPress={close} />}
           right={
             <Button
-              title="Paylaş"
+              title={editing ? 'Kaydet' : 'Paylaş'}
               size="sm"
               fullWidth={false}
               loading={loading}
@@ -95,21 +117,27 @@ export default function NewPostScreen() {
       }
     >
       <View style={styles.container}>
-        <View style={{ gap: spacing.sm }}>
-          <Text variant="label" tone="secondary">
-            Topluluk
+        {editing ? (
+          <Text variant="caption" tone="muted">
+            {editing.cancerType?.name} topluluğunda paylaşıldı. Topluluk ve görseller değiştirilemez.
           </Text>
-          <View style={styles.wrap}>
-            {communities.map((p) => (
-              <Chip
-                key={p.cancerType.id}
-                label={p.cancerType.name}
-                selected={cancerTypeId === p.cancerType.id}
-                onPress={() => setCancerTypeId(p.cancerType.id)}
-              />
-            ))}
+        ) : (
+          <View style={{ gap: spacing.sm }}>
+            <Text variant="label" tone="secondary">
+              Topluluk
+            </Text>
+            <View style={styles.wrap}>
+              {communities.map((p) => (
+                <Chip
+                  key={p.cancerType.id}
+                  label={p.cancerType.name}
+                  selected={cancerTypeId === p.cancerType.id}
+                  onPress={() => setCancerTypeId(p.cancerType.id)}
+                />
+              ))}
+            </View>
           </View>
-        </View>
+        )}
 
         <View style={{ gap: spacing.sm }}>
           <Text variant="label" tone="secondary">
@@ -132,7 +160,7 @@ export default function NewPostScreen() {
           inputStyle={{ minHeight: 160 }}
         />
 
-        <View style={styles.images}>
+        <View style={[styles.images, editing && { display: 'none' }]}>
           {images.map((img, i) => (
             <View key={img.uri} style={styles.thumbWrap}>
               <Image source={{ uri: img.uri }} style={styles.thumb} />

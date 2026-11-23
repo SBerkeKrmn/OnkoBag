@@ -56,7 +56,14 @@ export default function PostCard({ post, detail = false, onDeleted }) {
     });
 
   const menuOptions = post.isMine
-    ? [{ label: 'Gönderiyi sil', icon: 'trash-outline', destructive: true, onPress: remove }]
+    ? [
+        {
+          label: 'Gönderiyi düzenle',
+          icon: 'create-outline',
+          onPress: () => router.push({ pathname: '/post/new', params: { edit: post.id } }),
+        },
+        { label: 'Gönderiyi sil', icon: 'trash-outline', destructive: true, onPress: remove },
+      ]
     : [
         { label: 'Gönderiyi şikayet et', icon: 'flag-outline', onPress: () => openReport('POST', post.id) },
         ...(post.author

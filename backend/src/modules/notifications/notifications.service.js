@@ -1,5 +1,6 @@
 const prisma = require('../../lib/prisma');
 const realtime = require('../../lib/realtime');
+const push = require('../../lib/push');
 const { publicUserSelect, formatPublicUser } = require('../../lib/selects');
 const { toCursorPage, cursorArgs } = require('../../utils/pagination');
 const ApiError = require('../../utils/ApiError');
@@ -18,9 +19,30 @@ function formatNotification(n) {
   };
 }
 
+/** Telefon bildirimi metni ve dokununca açılacak ekran */
+function pushContent(n) {
+  const actor = n.actor ? n.actor.displayName || n.actor.username : 'Bir üye';
+  const post = n.entityId ? `/post/${n.entityId}` : '/notifications';
+  switch (n.type) {
+    case 'NEW_FOLLOWER':
+      return { body: `${actor} seni takip etmeye başladı`, url: n.actor ? `/user/${n.actor.id}` : '/notifications' };
+    case 'POST_LIKED':
+      return { body: `${actor} gönderine destek verdi 💜`, url: post };
+    case 'POST_COMMENTED':
+      return { body: `${actor} gönderine yorum yaptı`, url: post };
+    case 'COMMENT_REPLIED':
+      return { body: `${actor} yorumuna yanıt verdi`, url: post };
+    case 'COMMENT_LIKED':
+      return { body: `${actor} yorumunu beğendi`, url: post };
+    default:
+      return { body: n.message ?? 'Yeni bir bildirimin var', url: '/notifications' };
+  }
+}
+
 /**
- * Bildirim oluşturur ve kullanıcının bağlı cihazlarına anlık iletir.
- * Kullanıcının kendi eylemi için bildirim üretilmez. Hata ana işlemi bozmaz.
+ * Bildirim oluşturur, kullanıcının açık uygulamasına anlık, kapalıysa telefonuna
+ * push bildirimi olarak iletir. Kullanıcının kendi eylemi için bildirim üretilmez.
+ * Hata ana işlemi bozmaz.
  */
 async function notify({ userId, actorId = null, type, entityId = null, message = null }) {
   if (actorId && actorId === userId) return null;
@@ -31,6 +53,8 @@ async function notify({ userId, actorId = null, type, entityId = null, message =
     });
     const formatted = formatNotification(notification);
     realtime.emitToUser(userId, 'notification:new', formatted);
+    const { body, url } = pushContent(notification);
+    push.sendToUsersSafe([userId], { title: 'OnkoBağ', body, data: { url, notificationId: notification.id } });
     return formatted;
   } catch (err) {
     console.error('Bildirim oluşturulamadı:', err.message);

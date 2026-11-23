@@ -14,10 +14,25 @@ import {
   Nunito_800ExtraBold,
 } from '@expo-google-fonts/nunito';
 
-import { AuthProvider } from '../context/AuthContext';
+import { useEffect } from 'react';
+import { router } from 'expo-router';
+import { AuthProvider, useAuth } from '../context/AuthContext';
 import { SocketProvider } from '../context/SocketContext';
 import { queryClient } from '../lib/queryClient';
+import { configureNotificationHandler, subscribeToNotificationTaps } from '../lib/pushNotifications';
 import { colors } from '../constants/theme';
+
+configureNotificationHandler();
+
+/** Bildirime dokununca ilgili ekranı açar (oturum açıldıktan sonra) */
+function NotificationTapHandler() {
+  const { status } = useAuth();
+  useEffect(() => {
+    if (status !== 'signedIn') return undefined;
+    return subscribeToNotificationTaps((url) => router.push(url));
+  }, [status]);
+  return null;
+}
 
 export default function RootLayout() {
   const [fontsLoaded] = useFonts({
@@ -36,6 +51,7 @@ export default function RootLayout() {
         <AuthProvider>
           <SocketProvider>
             <StatusBar style="dark" />
+            <NotificationTapHandler />
             <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.background } }}>
               <Stack.Screen name="legal/[doc]" options={{ presentation: 'modal' }} />
             </Stack>

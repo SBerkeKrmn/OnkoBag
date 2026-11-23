@@ -37,6 +37,8 @@ export const usersApi = {
   unfollow: (id) => request(`/users/${id}/follow`, { method: 'DELETE' }),
   block: (id) => request(`/users/${id}/block`, { method: 'POST' }),
   unblock: (id) => request(`/users/${id}/block`, { method: 'DELETE' }),
+  registerPushToken: (token, platform) => request('/users/me/push-tokens', { method: 'POST', body: { token, platform } }),
+  removePushToken: (token) => request('/users/me/push-tokens', { method: 'DELETE', body: { token } }),
 };
 
 export const cancerTypesApi = {
@@ -80,6 +82,7 @@ export const postsApi = {
 };
 
 export const commentsApi = {
+  update: (id, body) => request(`/comments/${id}`, { method: 'PATCH', body }),
   remove: (id) => request(`/comments/${id}`, { method: 'DELETE' }),
   like: (id) => request(`/comments/${id}/like`, { method: 'POST' }),
   unlike: (id) => request(`/comments/${id}/like`, { method: 'DELETE' }),

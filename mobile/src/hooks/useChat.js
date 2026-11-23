@@ -7,6 +7,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { conversationsApi, roomsApi } from '../api';
 import { useSocket, useSocketEvent, emitWithAck } from '../context/SocketContext';
 import { ApiError } from '../api/client';
+import { queryClient, keys } from '../lib/queryClient';
 
 const CONFIG = {
   room: {
@@ -16,6 +17,7 @@ const CONFIG = {
     sendEvent: 'room:send',
     readEvent: 'room:read',
     idField: 'roomId',
+    listKey: keys.rooms,
   },
   dm: {
     api: conversationsApi,
@@ -24,6 +26,7 @@ const CONFIG = {
     sendEvent: 'dm:send',
     readEvent: 'dm:read',
     idField: 'conversationId',
+    listKey: keys.conversations,
   },
 };
 
@@ -49,14 +52,27 @@ export default function useChat(kind, id, myUserId) {
     });
   }, []);
 
+  // Okunmamış rozeti (alt sekme + liste) okundu bilgisi sunucuya ulaşır ulaşmaz silinir.
+  // Önce önbellek hemen sıfırlanır; sunucu onayından sonra liste yeniden çekilir ki
+  // o sırada yolda olan eski bir yanıt rozeti geri getirmesin.
+  const clearUnread = useCallback(() => {
+    queryClient.setQueryData(cfg.listKey, (list) =>
+      Array.isArray(list) ? list.map((x) => (x.id === id ? { ...x, unreadCount: 0 } : x)) : list,
+    );
+  }, [cfg, id]);
+
   const markRead = useCallback(
-    (messageId) => {
+    async (messageId) => {
       if (!messageId || (lastReadSent.current && !bigger(messageId, lastReadSent.current))) return;
       lastReadSent.current = String(messageId);
-      if (socket?.connected) socket.emit(cfg.readEvent, { [cfg.idField]: id, messageId: String(messageId) });
-      else cfg.api.read(id, String(messageId)).catch(() => {});
+      clearUnread();
+      const payload = { [cfg.idField]: id, messageId: String(messageId) };
+      const ack = await emitWithAck(socket, cfg.readEvent, payload);
+      if (!ack?.ok) await cfg.api.read(id, String(messageId)).catch(() => {});
+      clearUnread();
+      queryClient.invalidateQueries({ queryKey: cfg.listKey });
     },
-    [socket, cfg, id],
+    [socket, cfg, id, clearUnread],
   );
 
   const load = useCallback(async () => {
