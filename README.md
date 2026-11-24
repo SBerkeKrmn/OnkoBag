@@ -3,6 +3,8 @@
 Aktif tedavi sürecindeki kanser hastalarını, aynı kanser türünü atlatmış bireylerle (iyileşenler) güvenli bir mobil ortamda buluşturan psikososyal akran desteği uygulaması.
 
 > BIL401 Bitirme Çalışması I — Şerif Berke Karaman
+>
+> Proje web sitesi: https://sberkekrmn.github.io/OnkoBag/ (kaynağı `site/`, `main`'e push edilince GitHub Actions ile yayınlanır)
 
 ## Özellikler
 
