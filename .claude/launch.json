@@ -18,6 +18,12 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": ["--prefix", "mobile", "run", "web", "--", "--port", "8090"],
       "port": 8090
+    },
+    {
+      "name": "mobile-web-local",
+      "runtimeExecutable": "cmd",
+      "runtimeArgs": ["/c", "cd mobile && set EXPO_PUBLIC_API_URL=http://localhost:3000/api/v1&& npx expo start --web --port 8091"],
+      "port": 8091
     }
   ]
 }

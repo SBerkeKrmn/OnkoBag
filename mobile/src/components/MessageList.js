@@ -1,8 +1,10 @@
 // Ters sıralı mesaj listesi: gün ayırıcıları, ardışık mesaj gruplama,
 // yanıt alıntısı, görseller, silinmiş/gizlenmiş mesaj gösterimi.
+import { useState } from 'react';
 import { ActivityIndicator, FlatList, Image, Pressable, StyleSheet, View } from 'react-native';
 import { router } from 'expo-router';
 import { Avatar, Text } from './ui';
+import ImageViewer from './ImageViewer';
 import { clockTime, dayLabel, displayNameOf, sameDay } from '../lib/format';
 import { colors, radius, spacing } from '../constants/theme';
 
@@ -12,7 +14,7 @@ function senderIdOf(m) {
   return m.sender?.id ?? m.senderId ?? null;
 }
 
-function Bubble({ message, mine, showSender, showAvatar, onLongPress, seen, showNames }) {
+function Bubble({ message, mine, showSender, showAvatar, onLongPress, onOpenImage, seen, showNames }) {
   const removed = message.status !== 'PUBLISHED';
 
   if (message.type === 'SYSTEM') {
@@ -80,8 +82,18 @@ function Bubble({ message, mine, showSender, showAvatar, onLongPress, seen, show
             </Text>
           ) : (
             <>
-              {message.media?.map((m) => (
-                <Image key={m.id} source={{ uri: m.url }} style={styles.image} resizeMode="cover" accessibilityLabel="Gönderilen görsel" />
+              {message.media?.map((m, i) => (
+                <Pressable
+                  key={m.id}
+                  onPress={() => onOpenImage?.(message.media, i)}
+                  onLongPress={() => onLongPress?.(message)}
+                  delayLongPress={300}
+                  accessibilityRole="imagebutton"
+                  accessibilityLabel="Görseli tam ekran aç"
+                  style={styles.image}
+                >
+                  <Image source={{ uri: m.url }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+                </Pressable>
               ))}
               {message.content ? (
                 <Text variant="body" style={{ color: mine ? colors.textOnPrimary : colors.text }}>
@@ -124,8 +136,16 @@ export default function MessageList({
   const myLatest = messages.find((m) => senderIdOf(m) === myUserId);
   const seenId =
     seenMessageId && myLatest && BigInt(seenMessageId) >= BigInt(myLatest.id) ? String(myLatest.id) : null;
+  const [viewer, setViewer] = useState(null); // { images, index }
 
   return (
+    <>
+    <ImageViewer
+      images={viewer?.images}
+      index={viewer?.index ?? 0}
+      visible={Boolean(viewer)}
+      onClose={() => setViewer(null)}
+    />
     <FlatList
       inverted
       data={messages}
@@ -168,12 +188,14 @@ export default function MessageList({
               showSender={!groupedWithOlder}
               showAvatar={!groupedWithNewer}
               onLongPress={onLongPress}
+              onOpenImage={(images, index) => setViewer({ images, index })}
               seen={seenId === String(item.id)}
             />
           </View>
         );
       }}
     />
+    </>
   );
 }
 
@@ -205,6 +227,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.sm,
     paddingVertical: 4,
   },
-  image: { width: 220, height: 220, borderRadius: radius.md, backgroundColor: colors.surfaceMuted },
+  image: { width: 220, height: 220, borderRadius: radius.md, overflow: 'hidden', backgroundColor: colors.surfaceMuted },
   time: { alignSelf: 'flex-end', fontSize: 10, lineHeight: 13 },
 });

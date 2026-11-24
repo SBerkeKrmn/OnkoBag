@@ -4,6 +4,7 @@ import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { ActionSheet, Card, IconButton, Text } from './ui';
 import UserLine from './UserLine';
+import ImageViewer from './ImageViewer';
 import { postsApi } from '../api';
 import { removePost, toggleLikeOptimistic } from '../lib/postCache';
 import { categoryOf, timeAgo } from '../lib/format';
@@ -11,17 +12,32 @@ import { confirmAction, confirmBlock, openReport } from '../lib/actions';
 import { showError } from '../lib/errors';
 import { colors, radius, spacing } from '../constants/theme';
 
+/** Gönderi görselleri; dokununca tam ekran açılır */
 function MediaGrid({ media }) {
+  const [openAt, setOpenAt] = useState(null);
   if (!media?.length) return null;
-  if (media.length === 1) {
-    return <Image source={{ uri: media[0].url }} style={styles.single} resizeMode="cover" accessibilityLabel="Gönderi görseli" />;
-  }
+
+  const thumb = (m, i, style) => (
+    <Pressable
+      key={m.id}
+      onPress={() => setOpenAt(i)}
+      accessibilityRole="imagebutton"
+      accessibilityLabel={`Görseli tam ekran aç${media.length > 1 ? ` (${i + 1}/${media.length})` : ''}`}
+      style={style}
+    >
+      <Image source={{ uri: m.url }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+    </Pressable>
+  );
+
   return (
-    <View style={styles.grid}>
-      {media.slice(0, 4).map((m) => (
-        <Image key={m.id} source={{ uri: m.url }} style={styles.gridItem} resizeMode="cover" accessibilityLabel="Gönderi görseli" />
-      ))}
-    </View>
+    <>
+      {media.length === 1 ? (
+        thumb(media[0], 0, styles.single)
+      ) : (
+        <View style={styles.grid}>{media.slice(0, 4).map((m, i) => thumb(m, i, styles.gridItem))}</View>
+      )}
+      <ImageViewer images={media} index={openAt ?? 0} visible={openAt !== null} onClose={() => setOpenAt(null)} />
+    </>
   );
 }
 
@@ -112,9 +128,10 @@ export default function PostCard({ post, detail = false, onDeleted }) {
           düzenlendi
         </Text>
       ) : null}
-
-      <MediaGrid media={post.media} />
       </Body>
+
+      {/* Görseller içerik düğmesinin dışında: iç içe düğme olmasın, dokununca tam ekran açılsın */}
+      <MediaGrid media={post.media} />
 
       <View style={styles.actions}>
         <Pressable
@@ -162,7 +179,7 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
     borderRadius: radius.pill,
   },
-  single: { width: '100%', aspectRatio: 4 / 3, borderRadius: radius.md, backgroundColor: colors.surfaceMuted },
+  single: { width: '100%', aspectRatio: 4 / 3, borderRadius: radius.md, overflow: 'hidden', backgroundColor: colors.surfaceMuted },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 4, borderRadius: radius.md, overflow: 'hidden' },
   gridItem: { width: '49.3%', aspectRatio: 1, backgroundColor: colors.surfaceMuted },
   actions: {
