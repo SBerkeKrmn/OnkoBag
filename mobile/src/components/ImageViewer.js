@@ -1,60 +1,50 @@
 // Tam ekran görsel görüntüleyici: siyah arka plan, birden çok görselde yana
-// kaydırma, iOS'ta iki parmakla yakınlaştırma, kapatma düğmesi ve sayaç.
-// Ek kütüphane gerektirmez (Expo Go'da da çalışır).
-import { useEffect, useRef, useState } from 'react';
-import { FlatList, Image, Modal, Platform, Pressable, ScrollView, StatusBar, StyleSheet, View, useWindowDimensions } from 'react-native';
+// kaydırma ve sayaç, iki parmakla / çift dokunuşla yakınlaştırma (iOS ve Android),
+// kapatma düğmesi (Android'de geri tuşu da kapatır).
+import { useCallback, useEffect, useState } from 'react';
+import { FlatList, Modal, Pressable, StatusBar, StyleSheet, View, useWindowDimensions } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Text } from './ui';
+import ZoomableImage from './ZoomableImage';
 import { hitSlop } from '../constants/theme';
-
-function Page({ uri, width, height }) {
-  const image = <Image source={{ uri }} style={{ width, height }} resizeMode="contain" accessibilityLabel="Görsel" />;
-  if (Platform.OS !== 'ios') return <View style={{ width, height }}>{image}</View>;
-  // iOS'ta ScrollView yerel yakınlaştırmayı destekler
-  return (
-    <ScrollView
-      style={{ width, height }}
-      maximumZoomScale={4}
-      minimumZoomScale={1}
-      centerContent
-      showsHorizontalScrollIndicator={false}
-      showsVerticalScrollIndicator={false}
-      bouncesZoom
-    >
-      {image}
-    </ScrollView>
-  );
-}
 
 /** images: [{ id?, url }], index: açılacak görsel; visible false ise hiçbir şey çizmez */
 export default function ImageViewer({ images = [], index = 0, visible, onClose }) {
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const [current, setCurrent] = useState(index);
-  const listRef = useRef(null);
+  const [zoomed, setZoomed] = useState(false);
 
   useEffect(() => {
-    if (visible) setCurrent(index);
+    if (visible) {
+      setCurrent(index);
+      setZoomed(false);
+    }
   }, [visible, index]);
+
+  const onZoomChange = useCallback((z) => setZoomed(z), []);
 
   if (!visible || !images.length) return null;
 
   return (
     <Modal visible transparent={false} animationType="fade" onRequestClose={onClose} statusBarTranslucent supportedOrientations={['portrait']}>
-      <StatusBar barStyle="light-content" />
-      <View style={styles.root}>
+      {/* Modal ayrı bir pencere olduğundan (Android) hareket kökü burada da gerekir */}
+      <GestureHandlerRootView style={styles.root}>
+        <StatusBar barStyle="light-content" />
         <FlatList
-          ref={listRef}
           data={images}
           keyExtractor={(img, i) => img.id ?? `${img.url}-${i}`}
           horizontal
           pagingEnabled
+          // Yakınlaştırılmışken yana kaydırma görseli kaydırır, sonraki görsele geçmez
+          scrollEnabled={!zoomed}
           showsHorizontalScrollIndicator={false}
           initialScrollIndex={index}
           getItemLayout={(_, i) => ({ length: width, offset: width * i, index: i })}
           onMomentumScrollEnd={(e) => setCurrent(Math.round(e.nativeEvent.contentOffset.x / width))}
-          renderItem={({ item }) => <Page uri={item.url} width={width} height={height} />}
+          renderItem={({ item }) => <ZoomableImage uri={item.url} width={width} height={height} onZoomChange={onZoomChange} />}
         />
 
         <View style={[styles.top, { paddingTop: insets.top + 8 }]} pointerEvents="box-none">
@@ -67,7 +57,7 @@ export default function ImageViewer({ images = [], index = 0, visible, onClose }
             </Text>
           ) : null}
         </View>
-      </View>
+      </GestureHandlerRootView>
     </Modal>
   );
 }
