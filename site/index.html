@@ -1,0 +1,510 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>OnkoBağ</title>
+<meta name="description" content="OnkoBağ: kanser tedavisi gören hastaları aynı kanser türünü atlatmış kişilerle buluşturan psikososyal akran desteği mobil uygulaması. BIL401 Bitirme Çalışması.">
+<meta property="og:title" content="OnkoBağ">
+<meta property="og:description" content="Aynı yolu yürüyenlerle bağ kur. Kanser hastaları ve iyileşenler için akran desteği uygulaması.">
+<meta name="theme-color" content="#6D5BD0">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%236D5BD0'/%3E%3Cpath d='M22 34c0-7 5-12 10-12s10 5 10 12' fill='none' stroke='%23fff' stroke-width='5' stroke-linecap='round'/%3E%3Ccircle cx='22' cy='40' r='5' fill='%23fff'/%3E%3Ccircle cx='42' cy='40' r='5' fill='%233E9C7A'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+/* Düzen: tek sütun okuma akışı; her bölüm sol kenarda küçük bir etiketle açılır.
+   Uygulamanın tasarım sistemi kullanılır: lavanta (ortak kanser farkındalık rengi)
+   + adaçayı yeşili (iyileşenler). */
+:root {
+  --lavender: #6D5BD0;
+  --lavender-deep: #4E3FA8;
+  --lavender-soft: #EFEBFF;
+  --sage: #3E9C7A;
+  --sage-soft: #E3F4EC;
+  --bg: #FAF9FD;
+  --surface: #FFFFFF;
+  --ink: #1E1B2E;
+  --ink-2: #5E5A72;
+  --ink-3: #8F8AA3;
+  --line: #E6E2F0;
+  --warn: #B87A0E;
+  --font: "Nunito", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+  --measure: 66ch;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --lavender: #9D8FF0; --lavender-deep: #C4BAFF; --lavender-soft: #262145;
+    --sage: #5CC29C; --sage-soft: #16302A;
+    --bg: #13111D; --surface: #1C1929; --ink: #EEEBF7; --ink-2: #B4AFC8; --ink-3: #847E9B; --line: #2F2B42;
+    --warn: #E0AE4E;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --lavender: #9D8FF0; --lavender-deep: #C4BAFF; --lavender-soft: #262145;
+  --sage: #5CC29C; --sage-soft: #16302A;
+  --bg: #13111D; --surface: #1C1929; --ink: #EEEBF7; --ink-2: #B4AFC8; --ink-3: #847E9B; --line: #2F2B42;
+  --warn: #E0AE4E;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font: 400 17px/1.65 var(--font);
+}
+a { color: var(--lavender); text-underline-offset: 3px; }
+a:focus-visible, button:focus-visible { outline: 3px solid var(--lavender); outline-offset: 3px; border-radius: 6px; }
+img, svg { max-width: 100%; }
+
+.wrap {
+  max-width: 980px;
+  margin: 0 auto;
+  padding-left: max(20px, env(safe-area-inset-left, 0px));
+  padding-right: max(20px, env(safe-area-inset-right, 0px));
+}
+
+/* Üst bar */
+.top {
+  position: sticky; top: 0; z-index: 5;
+  background: color-mix(in srgb, var(--bg) 88%, transparent);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--line);
+}
+.top .wrap { display: flex; align-items: center; gap: 20px; padding-block: 12px; }
+.brand { display: flex; align-items: center; gap: 10px; font-weight: 900; font-size: 1.15rem; color: var(--ink); text-decoration: none; }
+.brand svg { width: 30px; height: 30px; flex: none; }
+.top nav { display: flex; gap: 18px; margin-left: auto; flex-wrap: wrap; }
+.top nav a { color: var(--ink-2); text-decoration: none; font-weight: 700; font-size: .92rem; }
+.top nav a:hover { color: var(--lavender); }
+@media (max-width: 720px) { .top nav { display: none; } }
+
+/* Giriş */
+.hero { padding-block: 72px 56px; }
+.hero .wrap { display: grid; grid-template-columns: 1.25fr .9fr; gap: 48px; align-items: center; }
+@media (max-width: 820px) { .hero .wrap { grid-template-columns: 1fr; } .hero { padding-block: 44px 32px; } }
+.kicker { font: 500 .78rem/1 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); }
+.hero h1 {
+  margin: 14px 0 0;
+  font-size: clamp(2.5rem, 6vw, 4.1rem);
+  line-height: 1.02;
+  font-weight: 900;
+  letter-spacing: -.025em;
+  text-wrap: balance;
+}
+.hero h1 .a { color: var(--lavender); }
+.hero h1 .b { color: var(--sage); }
+.hero .lede { margin: 22px 0 0; font-size: 1.2rem; color: var(--ink-2); max-width: 34ch; }
+.actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 30px; }
+.btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 12px 20px; border-radius: 999px;
+  font-weight: 800; text-decoration: none; font-size: .98rem;
+  border: 1.5px solid var(--lavender);
+}
+.btn.primary { background: var(--lavender); color: #fff; }
+:root[data-theme="dark"] .btn.primary { color: #13111D; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .btn.primary { color: #13111D; } }
+.btn.ghost { color: var(--lavender); }
+.btn svg { width: 18px; height: 18px; }
+
+/* Bağ çizimi: hasta ↔ iyileşen */
+.bond { background: var(--surface); border: 1px solid var(--line); border-radius: 28px; padding: 26px; }
+.bond svg { display: block; width: 100%; height: auto; }
+.bond figcaption { margin-top: 14px; font-size: .9rem; color: var(--ink-3); }
+
+/* Bölümler */
+section.block { padding-block: 64px; border-top: 1px solid var(--line); }
+.label { display: flex; align-items: baseline; gap: 12px; margin-bottom: 10px; }
+.label .no { font: 500 .8rem var(--mono); color: var(--lavender); }
+.label .tag { font: 500 .78rem var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); }
+h2 { margin: 0 0 18px; font-size: clamp(1.7rem, 3.4vw, 2.3rem); line-height: 1.15; font-weight: 900; letter-spacing: -.015em; text-wrap: balance; }
+h3 { margin: 0 0 6px; font-size: 1.08rem; font-weight: 800; }
+p { margin: 0; }
+.prose { max-width: var(--measure); display: grid; gap: 14px; color: var(--ink-2); }
+.prose strong { color: var(--ink); }
+
+/* Problem: rakamsız, iki taraflı karşılaştırma */
+.sides { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-top: 28px; }
+@media (max-width: 720px) { .sides { grid-template-columns: 1fr; } }
+.side { padding: 22px; border-radius: 20px; background: var(--surface); border: 1px solid var(--line); min-width: 0; }
+.side .who { display: inline-flex; align-items: center; gap: 8px; font-weight: 800; font-size: .85rem; padding: 4px 12px; border-radius: 999px; margin-bottom: 12px; }
+.side.patient .who { background: var(--lavender-soft); color: var(--lavender-deep); }
+.side.survivor .who { background: var(--sage-soft); color: var(--sage); }
+.side ul { margin: 0; padding-left: 1.1em; color: var(--ink-2); display: grid; gap: 6px; }
+
+/* Özellikler */
+.features { display: grid; grid-template-columns: repeat(3, 1fr); gap: 28px 32px; margin-top: 30px; }
+@media (max-width: 860px) { .features { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 560px) { .features { grid-template-columns: 1fr; } }
+.feature { min-width: 0; }
+.feature .ic { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; background: var(--lavender-soft); color: var(--lavender); margin-bottom: 12px; }
+.feature .ic.s { background: var(--sage-soft); color: var(--sage); }
+.feature .ic svg { width: 21px; height: 21px; }
+.feature p { color: var(--ink-2); font-size: .97rem; }
+
+/* Mimari */
+.arch { margin-top: 28px; overflow-x: auto; border: 1px solid var(--line); border-radius: 24px; background: var(--surface); padding: 24px; }
+.arch svg { display: block; min-width: 760px; width: 100%; height: auto; }
+.arch text { font-family: var(--font); }
+.stack { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-top: 22px; }
+@media (max-width: 760px) { .stack { grid-template-columns: repeat(2, 1fr); } }
+.stack div { min-width: 0; }
+.stack dt { font: 500 .75rem var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); }
+.stack dd { margin: 4px 0 0; font-weight: 700; font-size: .95rem; }
+
+/* Zaman planı */
+.timeline { list-style: none; margin: 30px 0 0; padding: 0; display: grid; gap: 0; }
+.timeline li { display: grid; grid-template-columns: 150px 26px 1fr; gap: 0 14px; }
+@media (max-width: 600px) { .timeline li { grid-template-columns: 0 22px 1fr; } .timeline .when { display: none; } }
+.timeline .when { font: 500 .85rem/1.5 var(--mono); color: var(--ink-3); padding-top: 3px; text-align: right; font-variant-numeric: tabular-nums; }
+.timeline .rail { position: relative; display: flex; justify-content: center; }
+.timeline .rail::before { content: ""; position: absolute; top: 0; bottom: 0; width: 2px; background: var(--line); }
+.timeline li:first-child .rail::before { top: 9px; }
+.timeline li:last-child .rail::before { bottom: auto; height: 9px; }
+.timeline .dot { position: relative; margin-top: 5px; width: 14px; height: 14px; border-radius: 50%; border: 2.5px solid var(--ink-3); background: var(--bg); }
+.timeline .done .dot { border-color: var(--sage); background: var(--sage); }
+.timeline .now .dot { border-color: var(--lavender); background: var(--lavender-soft); box-shadow: 0 0 0 5px color-mix(in srgb, var(--lavender) 18%, transparent); }
+.timeline .body { padding-bottom: 26px; min-width: 0; }
+.timeline .body p { color: var(--ink-2); font-size: .96rem; }
+.timeline .mobile-when { display: none; font: 500 .8rem var(--mono); color: var(--ink-3); }
+@media (max-width: 600px) { .timeline .mobile-when { display: block; } }
+.state { display: inline-block; margin-left: 8px; font: 500 .72rem var(--mono); letter-spacing: .04em; padding: 2px 8px; border-radius: 999px; vertical-align: 2px; }
+.state.ok { background: var(--sage-soft); color: var(--sage); }
+.state.go { background: var(--lavender-soft); color: var(--lavender-deep); }
+.state.next { background: transparent; color: var(--ink-3); border: 1px solid var(--line); }
+
+/* Güncel durum */
+.status { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-top: 28px; }
+@media (max-width: 720px) { .status { grid-template-columns: 1fr; } }
+.status .col { background: var(--surface); border: 1px solid var(--line); border-radius: 20px; padding: 22px; min-width: 0; }
+.status h3 { display: flex; align-items: center; gap: 8px; }
+.checks { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 9px; }
+.checks li { display: grid; grid-template-columns: 20px 1fr; gap: 10px; color: var(--ink-2); font-size: .96rem; }
+.checks svg { width: 18px; height: 18px; margin-top: 4px; }
+.checks .y svg { color: var(--sage); }
+.checks .n svg { color: var(--ink-3); }
+.facts { display: flex; flex-wrap: wrap; gap: 10px 28px; margin-top: 22px; font-size: .95rem; color: var(--ink-2); }
+.facts b { font-variant-numeric: tabular-nums; color: var(--ink); font-weight: 900; font-size: 1.15rem; margin-right: 4px; }
+
+/* Ekip */
+.team { display: grid; grid-template-columns: repeat(2, minmax(0, 340px)); gap: 18px; margin-top: 26px; }
+@media (max-width: 640px) { .team { grid-template-columns: 1fr; } }
+.person { display: flex; gap: 16px; align-items: center; }
+.avatar { width: 54px; height: 54px; border-radius: 50%; display: grid; place-items: center; font-weight: 900; color: #fff; background: var(--lavender); flex: none; }
+.avatar.s { background: var(--sage); }
+:root[data-theme="dark"] .avatar { color: #13111D; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .avatar { color: #13111D; } }
+.person .role { color: var(--ink-3); font-size: .9rem; }
+
+/* Alt bilgi */
+footer { border-top: 1px solid var(--line); padding-block: 36px 48px; color: var(--ink-3); font-size: .9rem; }
+footer .wrap { display: grid; gap: 10px; }
+.notice { display: flex; gap: 10px; align-items: flex-start; max-width: var(--measure); }
+.notice svg { width: 18px; height: 18px; flex: none; margin-top: 3px; color: var(--warn); }
+code { font-family: var(--mono); font-size: .88em; background: var(--lavender-soft); color: var(--lavender-deep); padding: 1px 6px; border-radius: 6px; }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="#">
+      <svg viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="16" fill="var(--lavender)"/><path d="M22 34c0-7 5-12 10-12s10 5 10 12" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round"/><circle cx="22" cy="40" r="5" fill="#fff"/><circle cx="42" cy="40" r="5" fill="var(--sage)"/></svg>
+      OnkoBağ
+    </a>
+    <nav aria-label="Bölümler">
+      <a href="#problem">Problem</a>
+      <a href="#cozum">Çözüm</a>
+      <a href="#mimari">Mimari</a>
+      <a href="#plan">Zaman planı</a>
+      <a href="#durum">Durum</a>
+      <a href="#ekip">Ekip</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <section class="hero">
+    <div class="wrap">
+      <div>
+        <p class="kicker">BIL401 Bitirme Çalışması · 2026–2027</p>
+        <h1>Aynı yolu <span class="a">yürüyenlerle</span> <span class="b">bağ kur.</span></h1>
+        <p class="lede">OnkoBağ, tedavisi süren kanser hastalarını aynı kanser türünü atlatmış kişilerle güvenli bir mobil ortamda buluşturan akran desteği uygulamasıdır.</p>
+        <div class="actions">
+          <a class="btn primary" href="https://github.com/SBerkeKrmn/OnkoBag">
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .5a11.5 11.5 0 0 0-3.64 22.41c.58.1.79-.25.79-.56v-2c-3.2.7-3.88-1.37-3.88-1.37-.52-1.33-1.28-1.69-1.28-1.69-1.05-.72.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.77 2.71 1.26 3.37.96.1-.75.4-1.26.73-1.55-2.55-.29-5.24-1.28-5.24-5.68 0-1.26.45-2.28 1.19-3.09-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.17 1.18a11 11 0 0 1 5.77 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.11 3.05.74.81 1.19 1.83 1.19 3.09 0 4.41-2.69 5.38-5.26 5.67.41.36.78 1.06.78 2.14v3.17c0 .31.21.67.8.56A11.5 11.5 0 0 0 12 .5Z"/></svg>
+            GitHub deposu
+          </a>
+          <a class="btn ghost" href="#durum">Güncel durum</a>
+        </div>
+      </div>
+
+      <figure class="bond" style="margin:0">
+        <svg viewBox="0 0 320 220" role="img" aria-label="Aktif tedavideki bir hasta ile iyileşmiş bir kişi aynı kanser türü odasında buluşuyor">
+          <rect x="18" y="20" width="284" height="180" rx="22" fill="var(--lavender-soft)"/>
+          <text x="160" y="48" text-anchor="middle" font-size="12" font-weight="800" fill="var(--lavender-deep)" font-family="Nunito, sans-serif">Meme Kanseri · Genel Sohbet #1</text>
+          <path d="M98 120 C 140 78, 180 78, 222 120" fill="none" stroke="var(--lavender)" stroke-width="3" stroke-dasharray="2 7" stroke-linecap="round"/>
+          <circle cx="86" cy="128" r="28" fill="var(--lavender)"/>
+          <text x="86" y="134" text-anchor="middle" font-size="15" font-weight="900" fill="#fff" font-family="Nunito, sans-serif">AY</text>
+          <circle cx="234" cy="128" r="28" fill="var(--sage)"/>
+          <text x="234" y="134" text-anchor="middle" font-size="15" font-weight="900" fill="#fff" font-family="Nunito, sans-serif">EK</text>
+          <rect x="44" y="166" width="84" height="22" rx="11" fill="var(--surface)"/>
+          <text x="86" y="181" text-anchor="middle" font-size="11" font-weight="800" fill="var(--lavender-deep)" font-family="Nunito, sans-serif">Tedavide</text>
+          <rect x="188" y="166" width="92" height="22" rx="11" fill="var(--surface)"/>
+          <text x="234" y="181" text-anchor="middle" font-size="11" font-weight="800" fill="var(--sage)" font-family="Nunito, sans-serif">✓ İyileşen</text>
+          <rect x="114" y="70" width="92" height="26" rx="13" fill="var(--surface)"/>
+          <text x="160" y="87" text-anchor="middle" font-size="11" font-weight="700" fill="var(--ink-2)" font-family="Nunito, sans-serif">İlk kür nasıldı?</text>
+        </svg>
+        <figcaption>Temsilî örnek. Kullanıcılar takma adla katılır; sitede gerçek kullanıcı verisi yoktur.</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section class="block" id="problem">
+    <div class="wrap">
+      <div class="label"><span class="no">01</span><span class="tag">Çözülen problem</span></div>
+      <h2>Tanıyı alan kişi, aynı yolu yürümüş birine kolayca ulaşamıyor</h2>
+      <div class="prose">
+        <p>Kanser tanısı tıbbi tedavinin yanında yoğun bir belirsizlik ve yalnızlık duygusu getirir. Hastanın en çok merak ettiği şeyler çoğu zaman günlük hayata dairdir: ilk kürden sonra nasıl hissedileceği, yan etkilerle nasıl başa çıkıldığı, sürecin sonunda neler olduğu. Bu soruların en inandırıcı cevabını aynı tanıyı almış ve süreci atlatmış kişiler verebilir.</p>
+        <p>Bugün bu bağ genellikle tesadüfe kalıyor. Genel sosyal medya grupları <strong>kanser türüne göre ayrışmıyor</strong>, kimin aktif tedavide kimin iyileşmiş olduğu belli değil ve yanlış tıbbi bilgiye, tacize karşı <strong>moderasyon</strong> zayıf.</p>
+      </div>
+      <div class="sides">
+        <div class="side patient">
+          <span class="who">Aktif tedavideki hasta</span>
+          <ul>
+            <li>Kendi kanser türünü yaşamış birine soru sormak ister</li>
+            <li>Umut verecek gerçek deneyimlere ihtiyaç duyar</li>
+            <li>Sağlık bilgisinin güvenli bir ortamda kalmasını ister</li>
+          </ul>
+        </div>
+        <div class="side survivor">
+          <span class="who">İyileşen kişi</span>
+          <ul>
+            <li>Deneyimini paylaşarak birine destek olmak ister</li>
+            <li>Kendi kanser türündeki hastalara doğrudan ulaşamaz</li>
+            <li>Tıbbi tavsiye vermeden, deneyim paylaşmak ister</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="block" id="cozum">
+    <div class="wrap">
+      <div class="label"><span class="no">02</span><span class="tag">Çözüm yaklaşımı</span></div>
+      <h2>Kanser türüne göre topluluklar, hasta–iyileşen eşleşmesi ve güçlü moderasyon</h2>
+      <div class="prose">
+        <p>Kullanıcı kayıt olurken kanser türünü ve durumunu (aktif tedavide / iyileşen) seçer. Uygulama onu otomatik olarak o türün canlı sohbet odasına yerleştirir ve aynı türdeki iyileşenleri önerir. Tıbbi tavsiye verilmez; uygulama deneyim paylaşımı için tasarlanmıştır.</p>
+      </div>
+      <div class="features">
+        <div class="feature">
+          <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12Z"/><path d="M8 11h8M8 14h5"/></svg></div>
+          <h3>Türe özel canlı odalar</h3>
+          <p>Her kanser türü için Socket.io ile anlık sohbet odası. Oda dolunca yenisi açılır ve üyeler dengeli dağıtılır.</p>
+        </div>
+        <div class="feature">
+          <div class="ic s"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="3.5"/><circle cx="16.5" cy="9.5" r="3"/><path d="M2.5 20c.6-3.4 2.9-5.5 5.5-5.5s4.9 2.1 5.5 5.5M13 20c.4-2.5 1.9-4 3.5-4s3.4 1.5 4 4"/></svg></div>
+          <h3>Hasta–iyileşen eşleşmesi</h3>
+          <p>Aktif tedavideki kullanıcıya aynı türü atlatmış kişiler önerilir; moderatör onaylı “iyileşen” rozeti güven verir.</p>
+        </div>
+        <div class="feature">
+          <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M7 9h10M7 13h6"/></svg></div>
+          <h3>Gönderi, yorum ve destek</h3>
+          <p>Deneyim, soru, yan etkiler gibi konularda gönderiler; yorum, yanıt, “destek ver” beğenisi ve takip.</p>
+        </div>
+        <div class="feature">
+          <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16v10H8l-4 4V6Z"/></svg></div>
+          <h3>Özel mesajlaşma</h3>
+          <p>Birebir sohbet, “görüldü” bilgisi ve görsel paylaşımı. Kimin mesaj atabileceğini kullanıcı belirler.</p>
+        </div>
+        <div class="feature">
+          <div class="ic s"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 4.5 6v6c0 4.3 3.1 7.9 7.5 9 4.4-1.1 7.5-4.7 7.5-9V6L12 3Z"/><path d="m9 12 2 2 4-4"/></svg></div>
+          <h3>Güvenlik ve moderasyon</h3>
+          <p>Her içerikte şikayet ve engelleme; kendine zarar verme şikayetleri moderatörlere anında iletilir ve 112 yönlendirmesi gösterilir.</p>
+        </div>
+        <div class="feature">
+          <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="10" width="14" height="10" rx="2.5"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg></div>
+          <h3>KVKK uyumu</h3>
+          <p>Takma adla katılım, açık rıza ve 18 yaş onayı, TC kimlik numarası tutulmaz, uygulama içinden hesap silme.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="block" id="mimari">
+    <div class="wrap">
+      <div class="label"><span class="no">03</span><span class="tag">Mimari</span></div>
+      <h2>Üç katman: mobil istemci, API ve gerçek zamanlı sunucu, PostgreSQL</h2>
+      <div class="prose">
+        <p>Mobil uygulama REST API ile veri alıp gönderir; sohbetler ve bildirimler aynı sunucu üzerindeki Socket.io bağlantısıyla anlık iletilir. Kimlik doğrulama kısa ömürlü JWT erişim anahtarı ve yenilenen oturum anahtarıyla yapılır.</p>
+      </div>
+      <div class="arch">
+        <svg viewBox="0 0 860 330" role="img" aria-label="Mimari şema: mobil uygulama, Node.js API ve Socket.io sunucusu, PostgreSQL veritabanı ve dış servisler">
+          <defs>
+            <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 10 5 0 10z" fill="var(--ink-3)"/></marker>
+          </defs>
+          <!-- Mobil -->
+          <rect x="20" y="70" width="210" height="190" rx="20" fill="var(--lavender-soft)" stroke="var(--lavender)" stroke-width="1.5"/>
+          <text x="125" y="102" text-anchor="middle" font-size="16" font-weight="900" fill="var(--ink)">Mobil uygulama</text>
+          <text x="125" y="124" text-anchor="middle" font-size="12" fill="var(--ink-2)">React Native · Expo SDK 58</text>
+          <text x="125" y="160" text-anchor="middle" font-size="12" fill="var(--ink-2)">Expo Router (ekranlar)</text>
+          <text x="125" y="180" text-anchor="middle" font-size="12" fill="var(--ink-2)">React Query (önbellek)</text>
+          <text x="125" y="200" text-anchor="middle" font-size="12" fill="var(--ink-2)">socket.io-client</text>
+          <text x="125" y="220" text-anchor="middle" font-size="12" fill="var(--ink-2)">SecureStore (oturum)</text>
+          <text x="125" y="244" text-anchor="middle" font-size="11" fill="var(--ink-3)">Android · iOS</text>
+
+          <!-- API -->
+          <rect x="325" y="50" width="230" height="230" rx="20" fill="var(--surface)" stroke="var(--line)" stroke-width="1.5"/>
+          <text x="440" y="82" text-anchor="middle" font-size="16" font-weight="900" fill="var(--ink)">Backend sunucusu</text>
+          <text x="440" y="104" text-anchor="middle" font-size="12" fill="var(--ink-2)">Node.js · Express</text>
+          <rect x="345" y="120" width="190" height="42" rx="10" fill="var(--lavender-soft)"/>
+          <text x="440" y="139" text-anchor="middle" font-size="12" font-weight="800" fill="var(--lavender-deep)">REST API /api/v1</text>
+          <text x="440" y="154" text-anchor="middle" font-size="10.5" fill="var(--ink-2)">10 modül · zod doğrulama</text>
+          <rect x="345" y="172" width="190" height="42" rx="10" fill="var(--sage-soft)"/>
+          <text x="440" y="191" text-anchor="middle" font-size="12" font-weight="800" fill="var(--sage)">Socket.io</text>
+          <text x="440" y="206" text-anchor="middle" font-size="10.5" fill="var(--ink-2)">oda · özel mesaj · bildirim</text>
+          <text x="440" y="240" text-anchor="middle" font-size="11" fill="var(--ink-3)">JWT · bcrypt · helmet · hız sınırı</text>
+          <text x="440" y="258" text-anchor="middle" font-size="11" fill="var(--ink-3)">Render (bulut)</text>
+
+          <!-- DB -->
+          <path d="M650 92 a85 18 0 0 0 170 0 v146 a85 18 0 0 1 -170 0 z" fill="var(--surface)" stroke="var(--line)" stroke-width="1.5"/>
+          <ellipse cx="735" cy="92" rx="85" ry="18" fill="var(--lavender-soft)" stroke="var(--line)" stroke-width="1.5"/>
+          <text x="735" y="140" text-anchor="middle" font-size="16" font-weight="900" fill="var(--ink)">PostgreSQL 16</text>
+          <text x="735" y="162" text-anchor="middle" font-size="12" fill="var(--ink-2)">Prisma ORM</text>
+          <text x="735" y="190" text-anchor="middle" font-size="12" fill="var(--ink-2)">24 tablo</text>
+          <text x="735" y="210" text-anchor="middle" font-size="12" fill="var(--ink-2)">CHECK + kısmi indeksler</text>
+
+          <!-- Oklar -->
+          <line x1="232" y1="140" x2="322" y2="140" stroke="var(--ink-3)" stroke-width="1.5" marker-end="url(#ah)" marker-start="url(#ah)"/>
+          <text x="277" y="130" text-anchor="middle" font-size="10.5" fill="var(--ink-3)">HTTPS</text>
+          <line x1="232" y1="192" x2="322" y2="192" stroke="var(--ink-3)" stroke-width="1.5" marker-end="url(#ah)" marker-start="url(#ah)"/>
+          <text x="277" y="182" text-anchor="middle" font-size="10.5" fill="var(--ink-3)">WSS</text>
+          <line x1="557" y1="165" x2="647" y2="165" stroke="var(--ink-3)" stroke-width="1.5" marker-end="url(#ah)" marker-start="url(#ah)"/>
+          <text x="602" y="155" text-anchor="middle" font-size="10.5" fill="var(--ink-3)">SQL</text>
+
+          <!-- Dış servisler -->
+          <line x1="440" y1="282" x2="440" y2="300" stroke="var(--ink-3)" stroke-width="1.5" stroke-dasharray="3 4"/>
+          <rect x="140" y="300" width="600" height="26" rx="13" fill="var(--bg)" stroke="var(--line)"/>
+          <text x="440" y="317" text-anchor="middle" font-size="11.5" fill="var(--ink-2)">Dış servisler: SMTP (e-posta kodları) · Expo Push (telefon bildirimleri) · Google / Apple ile giriş</text>
+        </svg>
+      </div>
+      <dl class="stack">
+        <div><dt>Mobil</dt><dd>React Native, Expo</dd></div>
+        <div><dt>Backend</dt><dd>Node.js, Express, Socket.io</dd></div>
+        <div><dt>Veritabanı</dt><dd>PostgreSQL, Prisma</dd></div>
+        <div><dt>Test</dt><dd>node:test, supertest (77 test)</dd></div>
+      </dl>
+    </div>
+  </section>
+
+  <section class="block" id="plan">
+    <div class="wrap">
+      <div class="label"><span class="no">04</span><span class="tag">Zaman planı</span></div>
+      <h2>Veritabanından mobile, oradan dağıtıma</h2>
+      <div class="prose"><p>Geliştirme sırası: veritabanı → proje iskeleti → backend → mobil arayüz. İş paketleri GitHub Issues üzerinde, kilometre taşlarına bağlı olarak izlenir.</p></div>
+      <ol class="timeline">
+        <li class="done">
+          <span class="when">Kasım 2026</span><span class="rail"><span class="dot"></span></span>
+          <div class="body"><span class="mobile-when">Kasım 2026</span><h3>Konu onayı ve tasarım <span class="state ok">Tamamlandı</span></h3><p>Danışman görüşmesi, kapsam, veri modeli ve ER diyagramı.</p></div>
+        </li>
+        <li class="done">
+          <span class="when">Kasım 2026</span><span class="rail"><span class="dot"></span></span>
+          <div class="body"><span class="mobile-when">Kasım 2026</span><h3>Veritabanı ve backend <span class="state ok">Tamamlandı</span></h3><p>Prisma şeması ve migration'lar; REST API, Socket.io, kimlik doğrulama, moderasyon ve entegrasyon testleri.</p></div>
+        </li>
+        <li class="done">
+          <span class="when">Kasım 2026</span><span class="rail"><span class="dot"></span></span>
+          <div class="body"><span class="mobile-when">Kasım 2026</span><h3>Mobil uygulama ve bulut <span class="state ok">Tamamlandı</span></h3><p>Tüm temel ekranlar, Google/Apple ile giriş, moderasyon paneli, Render üzerinde yayın.</p></div>
+        </li>
+        <li class="now">
+          <span class="when">15 Aralık 2026</span><span class="rail"><span class="dot"></span></span>
+          <div class="body"><span class="mobile-when">15 Aralık 2026</span><h3>Vize teslimi <span class="state go">Devam ediyor</span></h3><p>Tasarım raporu, aylık raporlar, proje web sitesi ve çalışan sistem.</p></div>
+        </li>
+        <li>
+          <span class="when">10 Ocak 2027</span><span class="rail"><span class="dot"></span></span>
+          <div class="body"><span class="mobile-when">10 Ocak 2027</span><h3>Final raporu <span class="state next">Planlandı</span></h3><p>Final raporu ve mobil uygulamanın temel ekranlarının sunumu.</p></div>
+        </li>
+        <li>
+          <span class="when">Bahar 2027</span><span class="rail"><span class="dot"></span></span>
+          <div class="body"><span class="mobile-when">Bahar 2027</span><h3>BIL402 — Bitirme II <span class="state next">Planlandı</span></h3><p>Telefon bildirimleri, kullanıcı testleri, mağaza dağıtımı ve iyileştirmeler.</p></div>
+        </li>
+      </ol>
+    </div>
+  </section>
+
+  <section class="block" id="durum">
+    <div class="wrap">
+      <div class="label"><span class="no">05</span><span class="tag">Güncel durum</span></div>
+      <h2>Çalışan bir sistem; sırada dağıtım ve kullanıcı testleri var</h2>
+      <div class="status">
+        <div class="col">
+          <h3>Tamamlananlar</h3>
+          <ul class="checks">
+            <li class="y"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5 9-10"/></svg>Veritabanı şeması, migration'lar ve başlangıç verisi (24 kanser türü)</li>
+            <li class="y"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5 9-10"/></svg>REST API ve Socket.io sunucusu, entegrasyon testleri</li>
+            <li class="y"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5 9-10"/></svg>Kayıt, e-posta doğrulama, Google ve Apple ile giriş</li>
+            <li class="y"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5 9-10"/></svg>Akış, gönderi, yorum, sohbet odaları, özel mesajlar</li>
+            <li class="y"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5 9-10"/></svg>Şikayet, engelleme ve uygulama içi moderasyon paneli</li>
+            <li class="y"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5 9-10"/></svg>Bulutta (Render) çalışan sunucu ve veritabanı</li>
+          </ul>
+        </div>
+        <div class="col">
+          <h3>Sıradakiler</h3>
+          <ul class="checks">
+            <li class="n"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="8"/></svg>Telefon bildirimleri için Firebase ve APNs kurulumu</li>
+            <li class="n"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="8"/></svg>Android test sürümünün (APK) dağıtılması</li>
+            <li class="n"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="8"/></svg>Tasarım raporu ve aylık raporlar</li>
+            <li class="n"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="8"/></svg>Kullanıcı testleri ve geri bildirimle iyileştirme</li>
+            <li class="n"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="8"/></svg>Yasal metinlerin hukuki incelemesi ve mağaza yayını</li>
+          </ul>
+        </div>
+      </div>
+      <div class="facts">
+        <span><b>24</b>veritabanı tablosu</span>
+        <span><b>10</b>API modülü</span>
+        <span><b>77</b>otomatik test</span>
+        <span><b>24</b>kanser türü topluluğu</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="block" id="ekip">
+    <div class="wrap">
+      <div class="label"><span class="no">06</span><span class="tag">Ekip ve depo</span></div>
+      <h2>Ekip</h2>
+      <div class="team">
+        <div class="person">
+          <span class="avatar" aria-hidden="true">ŞB</span>
+          <div><h3>Şerif Berke Karaman</h3><p class="role">Geliştirici · BIL401 öğrencisi</p></div>
+        </div>
+        <div class="person">
+          <span class="avatar s" aria-hidden="true">AÇ</span>
+          <div><h3>Doç. Dr. Abdullah Çalışkan</h3><p class="role">Proje danışmanı</p></div>
+        </div>
+      </div>
+      <div class="prose" style="margin-top:30px">
+        <p>Kaynak kodu, dokümantasyon ve iş paketleri GitHub'da: <a href="https://github.com/SBerkeKrmn/OnkoBag">github.com/SBerkeKrmn/OnkoBag</a>. İş takibi için <a href="https://github.com/SBerkeKrmn/OnkoBag/issues">Issues</a>, kurulum için depodaki <code>README.md</code>.</p>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <div class="notice">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 2.5 20h19L12 3Z"/><path d="M12 10v4M12 17h.01"/></svg>
+      <p>OnkoBağ tıbbi tavsiye vermez; paylaşımlar kişisel deneyimdir. Bu sitede gerçek kişilere ait kullanıcı verisi yayımlanmaz; görseldeki adlar temsilîdir.</p>
+    </div>
+    <p>OnkoBağ · BIL401 Bitirme Çalışması · Şerif Berke Karaman</p>
+  </div>
+</footer>
+
+</body>
+</html>
