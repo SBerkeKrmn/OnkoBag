@@ -1,25 +1,14 @@
 const { Router } = require('express');
-const rateLimit = require('express-rate-limit');
-const env = require('../../config/env');
 const asyncHandler = require('../../utils/asyncHandler');
 const validate = require('../../utils/validate');
 const { requireAuth } = require('../../middlewares/auth');
+const { authLimiter, loginPerAccountLimiter, codePerAccountLimiter, clientIp } = require('../../lib/rateLimits');
 const schemas = require('./auth.schemas');
 const service = require('./auth.service');
 
 const router = Router();
 
-// Kaba kuvvet saldırılarına karşı kimlik doğrulama uç noktalarında sıkı limit
-const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  limit: 20,
-  standardHeaders: 'draft-8',
-  legacyHeaders: false,
-  skip: () => env.isTest,
-  message: { error: { message: 'Çok fazla deneme yaptınız, lütfen 15 dakika sonra tekrar deneyin', code: 'RATE_LIMITED' } },
-});
-
-const meta = (req) => ({ userAgent: req.get('user-agent'), ip: req.ip });
+const meta = (req) => ({ userAgent: req.get('user-agent'), ip: clientIp(req) });
 
 router.post(
   '/register',
@@ -33,6 +22,7 @@ router.post(
 router.post(
   '/login',
   authLimiter,
+  loginPerAccountLimiter,
   validate({ body: schemas.login }),
   asyncHandler(async (req, res) => {
     res.json({ data: await service.login(req.body, meta(req)) });
@@ -79,6 +69,7 @@ router.post(
   '/verify-email',
   authLimiter,
   requireAuth,
+  codePerAccountLimiter,
   validate({ body: schemas.verifyEmail }),
   asyncHandler(async (req, res) => {
     res.json({ data: await service.verifyEmail(req.user.id, req.body) });
@@ -108,6 +99,7 @@ router.post(
 router.post(
   '/reset-password',
   authLimiter,
+  codePerAccountLimiter,
   validate({ body: schemas.resetPassword }),
   asyncHandler(async (req, res) => {
     await service.resetPassword(req.body);

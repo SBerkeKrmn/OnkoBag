@@ -6,6 +6,8 @@ const { idParam, offsetPageQuery } = require('../../utils/schemas');
 const { requireAuth } = require('../../middlewares/auth');
 const schemas = require('./users.schemas');
 const service = require('./users.service');
+const { emailExport } = require('./dataExport');
+const { limiter } = require('../../lib/rateLimits');
 
 const router = Router();
 router.use(requireAuth);
@@ -24,6 +26,24 @@ router.patch(
   validate({ body: schemas.updateMe }),
   asyncHandler(async (req, res) => {
     res.json({ data: await service.updateMe(req.user.id, req.body) });
+  }),
+);
+
+// KVKK m. 11: verilerin kopyası kullanıcının doğrulanmış e-posta adresine gönderilir
+// (uygulamaya değil: oturumu ele geçiren biri verileri doğrudan indiremesin)
+const exportLimiter = limiter({
+  windowMs: 60 * 60 * 1000,
+  limit: 3,
+  keyGenerator: (req) => `export:${req.user.id}`,
+  message: 'Verilerinin kopyası kısa süre önce gönderildi; lütfen bir saat sonra tekrar dene',
+});
+
+router.post(
+  '/me/export',
+  exportLimiter,
+  asyncHandler(async (req, res) => {
+    await emailExport(req.user.id);
+    res.json({ data: { message: 'Verilerinin kopyası e-posta adresine gönderildi' } });
   }),
 );
 

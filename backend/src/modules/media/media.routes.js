@@ -1,6 +1,5 @@
 const { Router } = require('express');
-const rateLimit = require('express-rate-limit');
-const env = require('../../config/env');
+const { limiter } = require('../../lib/rateLimits');
 const asyncHandler = require('../../utils/asyncHandler');
 const validate = require('../../utils/validate');
 const { idParam } = require('../../utils/schemas');
@@ -10,11 +9,11 @@ const service = require('./media.service');
 const router = Router();
 router.use(requireAuth, requireVerified);
 
-const uploadLimiter = rateLimit({
+const uploadLimiter = limiter({
   windowMs: 60 * 60 * 1000,
   limit: 60,
-  keyGenerator: (req) => req.user.id,
-  skip: () => env.isTest,
+  keyGenerator: (req) => `upload:${req.user.id}`,
+  message: 'Çok fazla görsel yüklediniz, lütfen biraz sonra tekrar deneyin',
 });
 
 /** multipart/form-data, alan adı: file */

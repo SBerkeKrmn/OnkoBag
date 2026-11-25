@@ -8,7 +8,7 @@ const ApiError = require('../../utils/ApiError');
 const { getBlockedUserIds, isBlockedBetween } = require('../../lib/blocks');
 const { publicUserSelect, formatPublicUser, mediaSelect, cancerTypeSelect } = require('../../lib/selects');
 const { toCursorPage, cursorArgs } = require('../../utils/pagination');
-const { attachMedia } = require('../media/media.service');
+const { attachMedia, purgeMedia } = require('../media/media.service');
 const notifications = require('../notifications/notifications.service');
 
 const postInclude = (viewerId) => ({
@@ -136,7 +136,11 @@ async function updatePost(userId, postId, data) {
 
 async function deletePost(userId, postId) {
   await getOwnPost(userId, postId);
-  await prisma.post.update({ where: { id: postId }, data: { status: 'DELETED' } });
+  // Metin ve görseller veritabanından da silinir (yalnızca gizlenmez)
+  await prisma.$transaction(async (tx) => {
+    await purgeMedia(tx, { postId });
+    await tx.post.update({ where: { id: postId }, data: { status: 'DELETED', content: '', title: null } });
+  });
 }
 
 // --- Beğeniler ---------------------------------------------------------------------
@@ -280,7 +284,7 @@ async function updateComment(userId, commentId, { content }) {
 async function deleteComment(userId, commentId) {
   const comment = await getOwnComment(userId, commentId);
   await prisma.$transaction([
-    prisma.comment.update({ where: { id: commentId }, data: { status: 'DELETED' } }),
+    prisma.comment.update({ where: { id: commentId }, data: { status: 'DELETED', content: '' } }),
     prisma.post.update({ where: { id: comment.postId }, data: { commentCount: { decrement: 1 } } }),
   ]);
 }

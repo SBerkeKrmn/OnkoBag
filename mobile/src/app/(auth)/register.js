@@ -391,7 +391,8 @@ export default function RegisterScreen() {
             <Checkbox checked={form.kvkkConsent} onToggle={() => set('kvkkConsent')(!form.kvkkConsent)} error={errors.kvkkConsent}>
               <Text variant="body">
                 <LegalLink doc="privacy">KVKK Aydınlatma Metni</LegalLink>’ni okudum. Kanser türüm ve tedavi durumum gibi
-                sağlık verilerimin topluluk eşleştirmesi amacıyla işlenmesine açık rıza veriyorum.
+                sağlık verilerimin topluluk eşleştirmesi amacıyla işlenmesine ve bu amaçla yurt dışındaki sunucularda
+                saklanmasına açık rıza veriyorum.
               </Text>
             </Checkbox>
           </View>

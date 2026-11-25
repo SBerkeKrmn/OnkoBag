@@ -15,6 +15,8 @@ const CODE_TTL_MINUTES = 15;
 const MAX_CODE_ATTEMPTS = 5;
 
 const hashPassword = (plain) => bcrypt.hash(plain, BCRYPT_ROUNDS);
+// Var olmayan hesaplarda da aynı sürede yanıt vermek için karşılaştırılan sahte hash
+const DUMMY_PASSWORD_HASH = bcrypt.hashSync('onkobag-timing-equalizer', BCRYPT_ROUNDS);
 
 // --- Oturum tokenları ---------------------------------------------------------
 
@@ -133,7 +135,11 @@ async function login({ email, password }, meta) {
   // Kullanıcının var olup olmadığını sızdırmamak için tek tip hata mesajı.
   // Yalnızca Google/Apple ile kayıtlı (şifresiz) hesaplar da aynı hatayı alır.
   const invalid = ApiError.unauthorized('E-posta veya şifre hatalı', { code: 'INVALID_CREDENTIALS' });
-  if (!user || user.status === 'DELETED' || !user.passwordHash) throw invalid;
+  if (!user || user.status === 'DELETED' || !user.passwordHash) {
+    // Yanıt süresinden hesabın var olup olmadığı anlaşılmasın: yine bir bcrypt karşılaştırması yapılır
+    await bcrypt.compare(password, DUMMY_PASSWORD_HASH);
+    throw invalid;
+  }
   if (!(await bcrypt.compare(password, user.passwordHash))) throw invalid;
 
   await assertCanSignIn(user);
@@ -210,7 +216,8 @@ async function forgotPassword({ email }) {
   if (!user || user.status !== 'ACTIVE') return;
 
   const code = await createCode(prisma, user.id, 'PASSWORD_RESET');
-  await mailer.sendPasswordResetCode(user.email, code);
+  // E-posta gönderimi beklenmez: yanıt süresinden hesabın varlığı anlaşılmasın
+  mailer.sendPasswordResetCode(user.email, code);
 }
 
 async function revokeAllSessions(userId) {
@@ -302,14 +309,15 @@ async function socialLogin({ provider, idToken, nonce, fullName }, meta) {
   const signupToken = jwt.sign(
     { typ: 'social-signup', provider, sub: profile.providerUserId, email: profile.email, emailVerified: profile.emailVerified, name },
     env.JWT_ACCESS_SECRET,
-    { expiresIn: SIGNUP_TOKEN_TTL },
+    { expiresIn: SIGNUP_TOKEN_TTL, algorithm: 'HS256', audience: 'onkobag-social-signup' },
   );
   return { status: 'PROFILE_REQUIRED', signupToken, profile: { email: profile.email, displayName: name } };
 }
 
 function readSignupToken(token) {
   try {
-    const payload = jwt.verify(token, env.JWT_ACCESS_SECRET);
+    // Yalnızca kayıt token'ı kabul edilir; oturum token'ı burada kullanılamaz
+    const payload = jwt.verify(token, env.JWT_ACCESS_SECRET, { algorithms: ['HS256'], audience: 'onkobag-social-signup' });
     if (payload.typ !== 'social-signup') throw new Error('typ');
     return payload;
   } catch {

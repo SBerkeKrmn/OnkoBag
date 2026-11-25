@@ -134,4 +134,17 @@ async function remove(userId, mediaId) {
   if (!useDatabase) fs.rmSync(path.join(env.uploadDir, media.storageKey), { force: true });
 }
 
-module.exports = { upload, createFromUpload, attachMedia, remove, serveStored };
+/**
+ * Silinen içeriğe bağlı görselleri tamamen siler (KVKK: silinen içerik saklanmaz).
+ * where: { postId } | { roomMessageId } | { directMessageId } | { uploaderId }
+ */
+async function purgeMedia(tx, where) {
+  const rows = await tx.media.findMany({ where, select: { storageKey: true } });
+  if (!rows.length) return;
+  await tx.media.deleteMany({ where });
+  if (!useDatabase) {
+    rows.forEach(({ storageKey }) => fs.rm(path.join(env.uploadDir, storageKey), { force: true }, () => {}));
+  }
+}
+
+module.exports = { upload, createFromUpload, attachMedia, remove, serveStored, purgeMedia };

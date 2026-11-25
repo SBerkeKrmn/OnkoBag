@@ -1,5 +1,8 @@
+const fs = require('fs');
+const path = require('path');
 const bcrypt = require('bcryptjs');
 const prisma = require('../../lib/prisma');
+const env = require('../../config/env');
 const realtime = require('../../lib/realtime');
 const ApiError = require('../../utils/ApiError');
 const { getBlockedUserIds, isBlockedBetween } = require('../../lib/blocks');
@@ -91,14 +94,24 @@ async function deleteMe(userId, { password, confirm }) {
 
   const anonymous = `deleted_${userId.replace(/-/g, '').slice(0, 20)}`;
   const memberships = await prisma.roomMembership.findMany({ where: { userId }, select: { roomId: true } });
+  // Diskte duran görseller (STORAGE_DRIVER=disk) işlem sonrası silinir
+  const mediaFiles = await prisma.media.findMany({ where: { uploaderId: userId }, select: { storageKey: true } });
 
   await prisma.$transaction(async (tx) => {
+    // Mesajlar da kişisel (çoğunlukla sağlık) verisi içerir: metinleri silinir, karşı
+    // tarafta "Bu mesaj silindi" olarak görünür (KVKK m. 7 — silme / anonimleştirme)
+    await tx.roomMessage.updateMany({ where: { senderId: userId }, data: { status: 'DELETED', content: null } });
+    await tx.directMessage.updateMany({ where: { senderId: userId }, data: { status: 'DELETED', content: null } });
+    // Yüklenen tüm görseller (gönderi, mesaj, profil) ve veritabanındaki baytları
+    await tx.media.deleteMany({ where: { uploaderId: userId } });
+    // Kullanıcıya gelen ve kullanıcının tetiklediği bildirimler
+    await tx.notification.deleteMany({ where: { OR: [{ userId }, { actorId: userId }] } });
     for (const { roomId } of memberships) {
       await tx.roomMembership.delete({ where: { roomId_userId: { roomId, userId } } });
       await tx.chatRoom.update({ where: { id: roomId }, data: { memberCount: { decrement: 1 } } });
     }
-    await tx.post.updateMany({ where: { authorId: userId }, data: { status: 'DELETED' } });
-    await tx.comment.updateMany({ where: { authorId: userId }, data: { status: 'DELETED' } });
+    await tx.post.updateMany({ where: { authorId: userId }, data: { status: 'DELETED', content: '', title: null } });
+    await tx.comment.updateMany({ where: { authorId: userId }, data: { status: 'DELETED', content: '' } });
     await tx.follow.deleteMany({ where: { OR: [{ followerId: userId }, { followingId: userId }] } });
     await tx.refreshToken.deleteMany({ where: { userId } });
     await tx.pushToken.deleteMany({ where: { userId } });
@@ -124,6 +137,9 @@ async function deleteMe(userId, { password, confirm }) {
     });
   });
 
+  if (env.STORAGE_DRIVER !== 'database') {
+    mediaFiles.forEach(({ storageKey }) => fs.rm(path.join(env.uploadDir, storageKey), { force: true }, () => {}));
+  }
   realtime.disconnectUser(userId);
 }
 

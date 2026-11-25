@@ -9,7 +9,7 @@ const push = require('../../lib/push');
 const ApiError = require('../../utils/ApiError');
 const { isBlockedBetween } = require('../../lib/blocks');
 const { publicUserSelect, formatPublicUser, mediaSelect } = require('../../lib/selects');
-const { attachMedia } = require('../media/media.service');
+const { attachMedia, purgeMedia } = require('../media/media.service');
 
 const directKeyOf = (a, b) => [a, b].sort().join(':');
 
@@ -204,10 +204,14 @@ async function deleteMessage(userId, conversationId, messageId) {
   if (!message || message.status === 'DELETED') throw ApiError.notFound('Mesaj bulunamadı');
   if (message.senderId !== userId) throw ApiError.forbidden('Yalnızca kendi mesajınızı silebilirsiniz');
 
-  const updated = await prisma.directMessage.update({
-    where: { id: messageId },
-    data: { status: 'DELETED' },
-    include: messageInclude,
+  // Metin ve görseller veritabanından da silinir (yalnızca gizlenmez)
+  const updated = await prisma.$transaction(async (tx) => {
+    await purgeMedia(tx, { directMessageId: messageId });
+    return tx.directMessage.update({
+      where: { id: messageId },
+      data: { status: 'DELETED', content: null },
+      include: messageInclude,
+    });
   });
   const formatted = formatMessage(updated);
   realtime.emitToUser(userId, 'dm:message:updated', formatted);

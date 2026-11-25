@@ -6,7 +6,7 @@ const realtime = require('../../lib/realtime');
 const ApiError = require('../../utils/ApiError');
 const { getBlockedUserIds } = require('../../lib/blocks');
 const { publicUserSelect, formatPublicUser, mediaSelect, cancerTypeSelect } = require('../../lib/selects');
-const { attachMedia } = require('../media/media.service');
+const { attachMedia, purgeMedia } = require('../media/media.service');
 
 const messageInclude = {
   sender: { select: publicUserSelect },
@@ -204,10 +204,14 @@ async function deleteMessage(userId, roomId, messageId) {
   await getMembership(userId, roomId);
   await getOwnMessage(userId, roomId, messageId);
 
-  const updated = await prisma.roomMessage.update({
-    where: { id: messageId },
-    data: { status: 'DELETED' },
-    include: messageInclude,
+  // Metin ve görseller veritabanından da silinir (yalnızca gizlenmez)
+  const updated = await prisma.$transaction(async (tx) => {
+    await purgeMedia(tx, { roomMessageId: messageId });
+    return tx.roomMessage.update({
+      where: { id: messageId },
+      data: { status: 'DELETED', content: null },
+      include: messageInclude,
+    });
   });
   realtime.emitToRoom(roomId, 'room:message:updated', formatMessage(updated));
 }

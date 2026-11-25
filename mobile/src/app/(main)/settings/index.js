@@ -1,5 +1,7 @@
-import { Linking, StyleSheet, View } from 'react-native';
-import { confirmLogout } from '../../../lib/actions';
+import { Alert, Linking, StyleSheet, View } from 'react-native';
+import { confirmAction, confirmLogout } from '../../../lib/actions';
+import { showError } from '../../../lib/errors';
+import { usersApi } from '../../../api';
 import { isModerator, ROLE_LABELS } from '../../../lib/moderation';
 import Constants from 'expo-constants';
 import { router } from 'expo-router';
@@ -14,6 +16,22 @@ const DM_LABELS = { EVERYONE: 'Herkes', FOLLOWING: 'Takip ettiklerim', NOBODY: '
 
 export default function SettingsScreen() {
   const { user, logout } = useAuth();
+
+  // KVKK m. 11: veriler uygulamaya değil, doğrulanmış e-posta adresine gönderilir
+  const requestExport = () =>
+    confirmAction({
+      title: 'Verilerinin kopyası gönderilsin mi?',
+      message: `Hesabına ait tüm verilerin (profil, kanser profillerin, gönderilerin, mesajların) bir JSON dosyası olarak ${user?.email} adresine gönderilecek.`,
+      confirmText: 'Gönder',
+      onConfirm: async () => {
+        try {
+          await usersApi.exportData();
+          Alert.alert('Gönderildi', 'Verilerinin kopyası birkaç dakika içinde e-posta kutunda olacak.');
+        } catch (err) {
+          showError(err, 'Veriler gönderilemedi');
+        }
+      },
+    });
 
   return (
     <Screen scroll header={<Header back title="Ayarlar" />}>
@@ -61,7 +79,8 @@ export default function SettingsScreen() {
             value={DM_LABELS[user?.dmPermission]}
             onPress={() => router.push('/settings/privacy')}
           />
-          <SettingsRow icon="ban-outline" label="Engellenen kullanıcılar" onPress={() => router.push('/settings/blocked')} last />
+          <SettingsRow icon="ban-outline" label="Engellenen kullanıcılar" onPress={() => router.push('/settings/blocked')} />
+          <SettingsRow icon="download-outline" label="Verilerimin kopyası" onPress={requestExport} last />
         </SettingsGroup>
 
         <SettingsGroup title="Destek ve yasal">

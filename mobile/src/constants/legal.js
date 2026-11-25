@@ -71,12 +71,16 @@ export const LEGAL_DOCS = {
         body: 'Kullanıcı adın, görünen adın, profil fotoğrafın, birincil kanser türün ve durumun diğer kullanıcılara gösterilir. E-posta adresin hiçbir kullanıcıyla paylaşılmaz. Özel mesajları yalnızca sohbetin tarafları görür; şikayet edilen içerikler moderatörlerce incelenebilir. Verilerin reklam amacıyla üçüncü kişilerle paylaşılmaz ve satılmaz.',
       },
       {
+        heading: 'Hizmet sağlayıcılar ve yurt dışına aktarım',
+        body: 'Uygulamanın sunucusu ve veritabanı Render (Frankfurt, Almanya) üzerinde barındırılır. Doğrulama kodu e-postaları e-posta servis sağlayıcısı aracılığıyla, telefon bildirimleri Expo (Google Firebase / Apple) aracılığıyla iletilir; bildirim metni kısa tutulur. Google veya Apple ile giriş yaparsan bu şirketlerden yalnızca kimlik doğrulaması ve e-posta adresin alınır. Bu nedenle verilerin yurt dışındaki sunucularda işlenir; kayıt sırasında verdiğin açık rıza bu aktarımı da kapsar (KVKK m. 9).',
+      },
+      {
         heading: 'Saklama ve güvenlik',
-        body: 'Veriler şifreli bağlantı (HTTPS/WSS) üzerinden iletilir. Şifreler geri döndürülemez biçimde (bcrypt) saklanır; oturum anahtarları cihazında güvenli depoda tutulur. Hesabını sildiğinde kişisel verilerin anonimleştirilir ve içeriklerin kaldırılır.',
+        body: 'Veriler şifreli bağlantı (HTTPS/WSS) üzerinden iletilir. Şifreler geri döndürülemez biçimde (bcrypt) saklanır; oturum anahtarları cihazında güvenli depoda tutulur. Sildiğin mesaj, gönderi, yorum ve görseller veritabanından da silinir. Hesabını sildiğinde kişisel verilerin, kanser profillerin, mesajlarının metni ve yüklediğin görseller silinir; hesabın anonimleştirilir. Moderasyon kayıtları, topluluk güvenliği için kişisel veri içermeyecek biçimde saklanır.',
       },
       {
         heading: 'Haklarınız',
-        body: `KVKK m. 11 kapsamında verilerine erişme, düzeltilmesini veya silinmesini isteme, işlenmesine itiraz etme haklarına sahipsin. Profilini uygulama içinden düzenleyebilir, hesabını silebilir veya taleplerini ${SUPPORT_EMAIL} adresine iletebilirsin.`,
+        body: `KVKK m. 11 kapsamında verilerine erişme, düzeltilmesini veya silinmesini isteme, işlenmesine itiraz etme haklarına sahipsin. Ayarlar → “Verilerimin kopyası” ile tüm verilerin e-posta adresine gönderilir; profilini uygulama içinden düzenleyebilir, hesabını silebilir veya taleplerini ${SUPPORT_EMAIL} adresine iletebilirsin.`,
       },
     ],
   },

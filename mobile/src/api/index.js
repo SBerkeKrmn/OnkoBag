@@ -24,6 +24,8 @@ export const usersApi = {
   updateMe: (body) => request('/users/me', { method: 'PATCH', body }),
   /** Şifreli hesap: { password }, yalnızca Google/Apple hesabı: { confirm: true } */
   deleteMe: (body) => request('/users/me', { method: 'DELETE', body }),
+  /** KVKK: verilerin kopyası kullanıcının e-postasına gönderilir */
+  exportData: () => request('/users/me/export', { method: 'POST' }),
   addCancerProfile: (body) => request('/users/me/cancer-profiles', { method: 'POST', body }),
   updateCancerProfile: (id, body) => request(`/users/me/cancer-profiles/${id}`, { method: 'PATCH', body }),
   removeCancerProfile: (id) => request(`/users/me/cancer-profiles/${id}`, { method: 'DELETE' }),

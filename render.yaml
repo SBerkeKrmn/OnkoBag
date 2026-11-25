@@ -29,6 +29,9 @@ services:
         generateValue: true
       - key: STORAGE_DRIVER
         value: database
+      # Render önünde Cloudflare var: istek sınırları gerçek istemci IP'sine (CF-Connecting-IP) göre
+      - key: TRUST_CLOUDFLARE_IP
+        value: "true"
       - key: CORS_ORIGIN
         value: "*"
       # Google OAuth istemci kimlikleri gizli değildir (uygulamanın içinde de bulunur)

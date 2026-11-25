@@ -33,6 +33,8 @@ const schema = z.object({
   // disk: UPLOAD_DIR klasörü (geliştirme) · database: görseller PostgreSQL'de (bulut, kalıcı disk yoksa)
   STORAGE_DRIVER: z.enum(['disk', 'database']).default('disk'),
   UPLOAD_DIR: z.string().default('uploads'),
+  // Cloudflare arkasında (Render) gerçek istemci IP'si CF-Connecting-IP başlığından okunur
+  TRUST_CLOUDFLARE_IP: z.enum(['true', 'false']).optional(),
   // Expo panelinde "Enhanced push security" açılırsa gerekir; aksi halde boş bırakılır
   EXPO_ACCESS_TOKEN: z.string().optional(),
   MAX_UPLOAD_MB: z.coerce.number().positive().default(5),
@@ -55,6 +57,8 @@ module.exports = {
   ...env,
   isProduction: env.NODE_ENV === 'production',
   isTest: env.NODE_ENV === 'test',
+  // Render'da varsayılan olarak açık (Render önünde her zaman Cloudflare vardır)
+  trustCloudflareIp: env.TRUST_CLOUDFLARE_IP ? env.TRUST_CLOUDFLARE_IP === 'true' : Boolean(process.env.RENDER),
   corsOrigins: env.CORS_ORIGIN === '*' ? '*' : env.CORS_ORIGIN.split(',').map((o) => o.trim()),
   uploadDir: path.resolve(__dirname, '../../', env.UPLOAD_DIR),
   googleClientIds: env.GOOGLE_CLIENT_IDS.split(',').map((s) => s.trim()).filter(Boolean),

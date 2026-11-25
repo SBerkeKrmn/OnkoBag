@@ -3,7 +3,7 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
-const rateLimit = require('express-rate-limit');
+const { apiLimiter } = require('./lib/rateLimits');
 
 const env = require('./config/env');
 const routes = require('./routes');
@@ -25,16 +25,7 @@ app.use(cors({ origin: env.corsOrigins }));
 app.use(express.json({ limit: '1mb' }));
 if (!env.isTest) app.use(morgan(env.isProduction ? 'combined' : 'dev'));
 
-app.use(
-  '/api',
-  rateLimit({
-    windowMs: 15 * 60 * 1000,
-    limit: 1000,
-    standardHeaders: 'draft-8',
-    legacyHeaders: false,
-    skip: () => env.isTest,
-  }),
-);
+app.use('/api', apiLimiter);
 
 // Yüklenen görseller (dosya adları tahmin edilemez UUID'lerdir)
 app.use('/uploads', express.static(env.uploadDir, { maxAge: '7d', index: false }));
