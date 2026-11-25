@@ -9,6 +9,7 @@ const { getBlockedUserIds, isBlockedBetween } = require('../../lib/blocks');
 const { publicUserSelect, formatPublicUser, mediaSelect, cancerTypeSelect } = require('../../lib/selects');
 const { toCursorPage, cursorArgs } = require('../../utils/pagination');
 const { attachMedia, purgeMedia } = require('../media/media.service');
+const { signMedia } = require('../../lib/mediaUrls');
 const notifications = require('../notifications/notifications.service');
 
 const postInclude = (viewerId) => ({
@@ -26,7 +27,7 @@ function formatPost(p, viewerId) {
     category: p.category,
     title: p.title,
     content: p.content,
-    media: p.media,
+    media: p.media.map(signMedia),
     likeCount: p.likeCount,
     commentCount: p.commentCount,
     likedByMe: p.likes.length > 0,

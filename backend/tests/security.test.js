@@ -285,6 +285,114 @@ describe('Güvenlik', () => {
     env.trustCloudflareIp = original;
   });
 
+  // --- Fotoğraf erişimi --------------------------------------------------------------------
+
+  describe('Fotoğraflar yalnızca yetkili kişilere açılır', () => {
+    const fetchImage = (pathAndQuery) => api().get(pathAndQuery).buffer(true).parse((r, cb) => {
+      const chunks = [];
+      r.on('data', (c) => chunks.push(c));
+      r.on('end', () => cb(null, Buffer.concat(chunks)));
+    });
+    const pathOf = (url) => {
+      const u = new URL(url);
+      return u.pathname + u.search;
+    };
+    let dmImage;
+
+    before(async () => {
+      // Zeynep, moderatöre özel mesajda fotoğraf gönderir
+      const up = await api().post('/api/v1/media').set(auth(zeynep.accessToken)).attach('file', PNG, { filename: 'a.png', contentType: 'image/png' });
+      const conv = await api().post('/api/v1/conversations').set(auth(zeynep.accessToken)).send({ userId: mod.id });
+      const msg = await api().post(`/api/v1/conversations/${conv.body.data.id}/messages`).set(auth(zeynep.accessToken)).send({ mediaIds: [up.body.data.id] });
+      dmImage = msg.body.data.media[0];
+    });
+
+    test('İmzasız, değiştirilmiş, başka görsele ait veya süresi dolmuş bağlantı açılmaz', async () => {
+      const { verifySignature, currentExpiry } = require('../src/lib/mediaUrls');
+      const u = new URL(dmImage.url);
+      const key = u.pathname.split('/').pop();
+      const e = u.searchParams.get('e');
+      const s = u.searchParams.get('s');
+
+      assert.equal((await fetchImage(`/uploads/${key}`)).status, 403, 'imzasız');
+      assert.equal((await fetchImage(`/uploads/${key}?e=${e}&s=${s.slice(0, -1)}x`)).status, 403, 'değiştirilmiş imza');
+      assert.equal((await fetchImage(`/uploads/${key}?e=${Number(e) + 21600}&s=${s}`)).status, 403, 'uzatılmış süre');
+      const other = await api().post('/api/v1/media').set(auth(ali.accessToken)).attach('file', PNG, { filename: 'b.png', contentType: 'image/png' });
+      const otherKey = new URL(other.body.data.url).pathname.split('/').pop();
+      assert.equal((await fetchImage(`/uploads/${otherKey}?e=${e}&s=${s}`)).status, 403, 'başka görselin imzası');
+      // Süresi dolmuş: 1 gün sonrasında doğrulama
+      assert.equal(verifySignature(key, e, s, Date.now() + 24 * 60 * 60 * 1000), false);
+      assert.ok(Number(e) <= currentExpiry());
+
+      const ok = await fetchImage(pathOf(dmImage.url));
+      assert.equal(ok.status, 200, 'geçerli imzalı bağlantı');
+      assert.ok(Buffer.from(ok.body).equals(PNG));
+      assert.match(ok.headers['cache-control'], /private/);
+    });
+
+    test('Özel mesaj fotoğrafının bağlantısı yalnızca iki tarafa verilir', async () => {
+      const asMod = await api().get('/api/v1/conversations').set(auth(mod.accessToken));
+      assert.ok(JSON.stringify(asMod.body).includes(new URL(dmImage.url).pathname));
+      // Ali'nin erişebildiği hiçbir yanıtta bu görselin anahtarı geçmez
+      const key = new URL(dmImage.url).pathname;
+      for (const path of ['/api/v1/conversations', '/api/v1/posts/feed', '/api/v1/rooms/me', '/api/v1/notifications']) {
+        const res = await api().get(path).set(auth(ali.accessToken));
+        assert.ok(!JSON.stringify(res.body).includes(key), `${path} özel mesaj görselini sızdırdı`);
+      }
+    });
+
+    test('Oda fotoğrafı yalnızca o kanser türünün oda üyelerine verilir', async () => {
+      const room = await prisma.roomMembership.findFirst({ where: { userId: mod.id } }); // tür 2
+      const up = await api().post('/api/v1/media').set(auth(mod.accessToken)).attach('file', PNG, { filename: 'r.png', contentType: 'image/png' });
+      await api().post(`/api/v1/rooms/${room.roomId}/messages`).set(auth(mod.accessToken)).send({ mediaIds: [up.body.data.id] });
+      // Ali tür 1'de: odanın mesajlarını alamaz
+      const asAli = await api().get(`/api/v1/rooms/${room.roomId}/messages`).set(auth(ali.accessToken));
+      assert.equal(asAli.status, 403);
+      // Aynı türden üye alır ve görseli açabilir
+      const member = await createUser({ cancerTypeId: 2 });
+      const asMember = await api().get(`/api/v1/rooms/${room.roomId}/messages`).set(auth(member.accessToken));
+      const img = asMember.body.data.flatMap((m) => m.media).find((m) => m.id === up.body.data.id);
+      assert.ok(img, 'üye görseli almalı');
+      assert.equal((await fetchImage(pathOf(img.url))).status, 200);
+    });
+
+    test('API yanıtlarında imzasız görsel adresi bulunmaz', async () => {
+      await api().patch('/api/v1/users/me').set(auth(zeynep.accessToken)).send({
+        avatarMediaId: (await api().post('/api/v1/media').set(auth(zeynep.accessToken)).attach('file', PNG, { filename: 'av.png', contentType: 'image/png' })).body.data.id,
+      });
+      const paths = ['/api/v1/users/me', `/api/v1/users/${zeynep.id}`, '/api/v1/posts/feed', '/api/v1/conversations', `/api/v1/users/search?q=${zeynep.username.slice(0, 6)}`];
+      for (const path of paths) {
+        const body = JSON.stringify((await api().get(path).set(auth(mod.accessToken))).body);
+        const unsigned = body.match(/\/uploads\/[A-Za-z0-9.-]+(?!\?e=)"/g);
+        assert.equal(unsigned, null, `${path} imzasız adres döndü: ${unsigned}`);
+      }
+    });
+  });
+
+  // --- Mesaj izni -------------------------------------------------------------------------
+
+  test('"Kimse mesaj atamaz" açılınca açık sohbette de karşı taraf yazamaz', async () => {
+    const a = await createUser({ cancerTypeId: 1 });
+    const b = await createUser({ cancerTypeId: 1 });
+    const conv = await api().post('/api/v1/conversations').set(auth(a.accessToken)).send({ userId: b.id });
+    const id = conv.body.data.id;
+    assert.equal((await api().post(`/api/v1/conversations/${id}/messages`).set(auth(a.accessToken)).send({ content: 'selam' })).status, 201);
+
+    await api().patch('/api/v1/users/me').set(auth(b.accessToken)).send({ dmPermission: 'NOBODY' });
+
+    const blocked = await api().post(`/api/v1/conversations/${id}/messages`).set(auth(a.accessToken)).send({ content: 'hala yazabiliyor muyum' });
+    assert.equal(blocked.status, 403);
+    assert.equal(blocked.body.error.code, 'DM_NOT_ALLOWED');
+    const detail = await api().get(`/api/v1/conversations/${id}`).set(auth(a.accessToken));
+    assert.equal(detail.body.data.canMessage, false);
+    assert.equal(await prisma.directMessage.count({ where: { content: 'hala yazabiliyor muyum' } }), 0);
+
+    // Ayarı açan kişi yazmaya devam edebilir; ayar geri alınınca karşı taraf da yazar
+    assert.equal((await api().post(`/api/v1/conversations/${id}/messages`).set(auth(b.accessToken)).send({ content: 'ben yazabilirim' })).status, 201);
+    await api().patch('/api/v1/users/me').set(auth(b.accessToken)).send({ dmPermission: 'EVERYONE' });
+    assert.equal((await api().post(`/api/v1/conversations/${id}/messages`).set(auth(a.accessToken)).send({ content: 'tekrar' })).status, 201);
+  });
+
   // --- KVKK ------------------------------------------------------------------------------
 
   describe('KVKK', () => {

@@ -29,7 +29,8 @@ describe('Veritabanında görsel depolama', () => {
     const blob = await prisma.mediaBlob.findUnique({ where: { mediaId: res.body.data.id } });
     assert.ok(blob, 'görsel media_blobs tablosuna yazılmalı');
 
-    const path = new URL(res.body.data.url).pathname;
+    const u = new URL(res.body.data.url);
+    const path = u.pathname + u.search; // imzalı bağlantı
     const served = await api().get(path).buffer(true).parse((r, cb) => {
       const chunks = [];
       r.on('data', (c) => chunks.push(c));
@@ -40,14 +41,16 @@ describe('Veritabanında görsel depolama', () => {
     assert.ok(Buffer.from(served.body).equals(PNG));
   });
 
-  test('Görsel olmayan dosya reddedilir; olmayan anahtar 404', async () => {
+  test('Görsel olmayan dosya reddedilir; imzalı ama olmayan anahtar 404', async () => {
     const bad = await api()
       .post('/api/v1/media')
       .set(auth(user.accessToken))
       .attach('file', Buffer.from('bu bir görsel değil'), { filename: 'x.png', contentType: 'image/png' });
     assert.equal(bad.status, 400);
 
-    const missing = await api().get('/uploads/yok.png');
+    const { signedUploadUrl } = require('../src/lib/mediaUrls');
+    const u = new URL(signedUploadUrl('00000000-0000-0000-0000-000000000000.png'));
+    const missing = await api().get(u.pathname + u.search);
     assert.equal(missing.status, 404);
   });
 

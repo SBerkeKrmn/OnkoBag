@@ -7,6 +7,7 @@ const realtime = require('../../lib/realtime');
 const ApiError = require('../../utils/ApiError');
 const { getBlockedUserIds, isBlockedBetween } = require('../../lib/blocks');
 const { publicUserSelect, formatPublicUser, cancerTypeSelect } = require('../../lib/selects');
+const { signUploadUrl } = require('../../lib/mediaUrls');
 const { assignUserToRoom, removeUserFromCancerTypeRooms } = require('../rooms/roomAssignment');
 const notifications = require('../notifications/notifications.service');
 
@@ -50,6 +51,7 @@ async function getMe(userId) {
   const { _count, emailVerifiedAt, passwordHash, identities, ...rest } = user;
   return {
     ...rest,
+    avatarUrl: signUploadUrl(rest.avatarUrl),
     emailVerified: Boolean(emailVerifiedAt),
     hasPassword: Boolean(passwordHash),
     linkedProviders: identities.map((i) => i.provider),
@@ -268,6 +270,7 @@ async function getProfile(viewerId, where) {
   const isSelf = viewerId === user.id;
   return {
     ...rest,
+    avatarUrl: signUploadUrl(rest.avatarUrl),
     // Cinsiyet profilde görünür; "Belirtmek istemiyorum" seçildiyse başkalarına gönderilmez
     gender: gender === 'PREFER_NOT_TO_SAY' ? null : gender,
     stats: { followers: _count.followers, following: _count.following, posts: _count.posts },

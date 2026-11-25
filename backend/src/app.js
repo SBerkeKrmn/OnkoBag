@@ -8,7 +8,7 @@ const { apiLimiter } = require('./lib/rateLimits');
 const env = require('./config/env');
 const routes = require('./routes');
 const { notFound, errorHandler } = require('./middlewares/errorHandler');
-const { serveStored } = require('./modules/media/media.service');
+const { serveUpload } = require('./modules/media/media.service');
 
 // Mesaj kimlikleri BIGINT; JSON'da hassasiyet kaybı olmaması için string olarak döner
 // eslint-disable-next-line no-extend-native
@@ -28,9 +28,8 @@ if (!env.isTest) app.use(morgan(env.isProduction ? 'combined' : 'dev'));
 app.use('/api', apiLimiter);
 
 // Yüklenen görseller (dosya adları tahmin edilemez UUID'lerdir)
-app.use('/uploads', express.static(env.uploadDir, { maxAge: '7d', index: false }));
-// Diskte yoksa veritabanından (STORAGE_DRIVER=database)
-app.get('/uploads/:key', serveStored);
+// Görseller yalnızca imzalı, süreli bağlantıyla açılır (bkz. lib/mediaUrls.js)
+app.get('/uploads/:key', serveUpload);
 
 app.use('/api/v1', routes);
 

@@ -6,6 +6,7 @@
 const prisma = require('../../lib/prisma');
 const realtime = require('../../lib/realtime');
 const push = require('../../lib/push');
+const { signMedia } = require('../../lib/mediaUrls');
 const ApiError = require('../../utils/ApiError');
 const { isBlockedBetween } = require('../../lib/blocks');
 const { publicUserSelect, formatPublicUser, mediaSelect } = require('../../lib/selects');
@@ -27,7 +28,7 @@ function formatMessage(m) {
     sender: formatPublicUser(m.sender),
     senderId: m.senderId,
     content: visible ? m.content : null,
-    media: visible ? m.media : [],
+    media: visible ? m.media.map(signMedia) : [],
     status: m.status,
     editedAt: m.editedAt,
     createdAt: m.createdAt,
@@ -38,7 +39,7 @@ function formatMessage(m) {
 async function getParticipants(userId, conversationId) {
   const participants = await prisma.conversationParticipant.findMany({
     where: { conversationId },
-    include: { user: { select: publicUserSelect } },
+    include: { user: { select: { ...publicUserSelect, dmPermission: true } } },
   });
   const me = participants.find((p) => p.userId === userId);
   if (!me) throw ApiError.notFound('Sohbet bulunamadı');
@@ -46,7 +47,14 @@ async function getParticipants(userId, conversationId) {
   return { me, other };
 }
 
-async function canStartConversation(senderId, recipient) {
+/**
+ * Alıcının "Kimler mesaj atabilir" ayarı. Yalnızca yeni sohbet açarken değil HER
+ * mesajda uygulanır: "Kimse" seçildiği andan itibaren açık sohbetler dahil hiç
+ * mesaj alınmaz; "Takip ettiklerim" seçildiyse yalnızca alıcının takip ettiği
+ * kişiler yazabilir.
+ */
+async function canMessage(senderId, recipient) {
+  if (!recipient || recipient.status !== 'ACTIVE') return false;
   if (recipient.dmPermission === 'NOBODY') return false;
   if (recipient.dmPermission === 'FOLLOWING') {
     // Alıcı, mesaj gönderen kişiyi takip ediyorsa izin verilir
@@ -81,11 +89,15 @@ async function formatConversation(conversation, userId) {
     unreadCount: await unreadCount(conversation.id, userId, me.lastReadMessageId, me.hiddenAt),
     isMuted: me.isMuted,
     otherLastReadMessageId: other?.lastReadMessageId ?? null,
+    // Karşı tarafa şu an mesaj gönderilebilir mi (mesaj izni, engel, hesap durumu)
+    canMessage: Boolean(other) && (await canMessage(userId, other.user)) && !(await isBlockedBetween(userId, other.userId)),
   };
 }
 
+const participantUserSelect = { ...publicUserSelect, dmPermission: true };
+
 const conversationInclude = {
-  participants: { include: { user: { select: publicUserSelect } } },
+  participants: { include: { user: { select: participantUserSelect } } },
   messages: { orderBy: { id: 'desc' }, take: 1, include: messageInclude },
 };
 
@@ -104,7 +116,7 @@ async function startConversation(userId, otherUserId) {
   let conversation = await prisma.conversation.findUnique({ where: { directKey }, include: conversationInclude });
 
   if (!conversation) {
-    if (!(await canStartConversation(userId, recipient))) {
+    if (!(await canMessage(userId, recipient))) {
       throw ApiError.forbidden('Bu kullanıcı özel mesaj kabul etmiyor', { code: 'DM_NOT_ALLOWED' });
     }
     try {
@@ -166,6 +178,10 @@ async function sendMessage(userId, conversationId, { content, mediaIds = [] }) {
   }
   if (await isBlockedBetween(userId, other.userId)) {
     throw ApiError.forbidden('Bu kullanıcıya mesaj gönderemezsiniz', { code: 'BLOCKED' });
+  }
+  // Mesaj izni her mesajda yeniden kontrol edilir (açık sohbetler dahil)
+  if (!(await canMessage(userId, other.user))) {
+    throw ApiError.forbidden('Bu kullanıcı şu anda mesaj kabul etmiyor', { code: 'DM_NOT_ALLOWED' });
   }
 
   const message = await prisma.$transaction(async (tx) => {

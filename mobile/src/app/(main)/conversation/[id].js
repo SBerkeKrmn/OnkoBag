@@ -55,6 +55,8 @@ export default function ConversationScreen() {
       return true;
     } catch (err) {
       showError(err, 'Mesaj gönderilemedi');
+      // Karşı taraf mesaj iznini kapattıysa yazma kutusu da kapansın
+      if (['DM_NOT_ALLOWED', 'BLOCKED', 'RECIPIENT_UNAVAILABLE'].includes(err?.code)) conversation.refetch();
       return false;
     }
   };
@@ -157,8 +159,14 @@ export default function ConversationScreen() {
           onAttach={sendImage}
           onTyping={emitTyping}
           maxLength={4000}
-          disabled={!user.emailVerified || !other}
-          disabledText={!other ? 'Bu kullanıcıya artık mesaj gönderilemez.' : 'Mesaj göndermek için e-posta adresini doğrulaman gerekiyor.'}
+          disabled={!user.emailVerified || !other || conversation.data?.canMessage === false}
+          disabledText={
+            !other
+              ? 'Bu kullanıcıya artık mesaj gönderilemez.'
+              : conversation.data?.canMessage === false
+                ? 'Bu kullanıcı şu anda mesaj kabul etmiyor.'
+                : 'Mesaj göndermek için e-posta adresini doğrulaman gerekiyor.'
+          }
         />
       </KeyboardAwareView>
 

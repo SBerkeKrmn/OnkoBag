@@ -9,9 +9,9 @@ import { showError } from '../../../lib/errors';
 import { colors, radius, spacing } from '../../../constants/theme';
 
 const OPTIONS = [
-  { value: 'EVERYONE', title: 'Herkes', text: 'Topluluktaki herkes sana özel mesaj başlatabilir.' },
-  { value: 'FOLLOWING', title: 'Takip ettiklerim', text: 'Yalnızca senin takip ettiğin kişiler mesaj başlatabilir.' },
-  { value: 'NOBODY', title: 'Kimse', text: 'Kimse yeni sohbet başlatamaz. Mevcut sohbetlerin devam eder.' },
+  { value: 'EVERYONE', title: 'Herkes', text: 'Topluluktaki herkes sana özel mesaj gönderebilir.' },
+  { value: 'FOLLOWING', title: 'Takip ettiklerim', text: 'Yalnızca senin takip ettiğin kişiler mesaj gönderebilir; diğerleri açık sohbetlerde de yazamaz.' },
+  { value: 'NOBODY', title: 'Kimse', text: 'Bu andan itibaren hiç kimse sana mesaj gönderemez; açık sohbetlerde de karşı taraf yazamaz. Sen yazmaya devam edebilirsin.' },
 ];
 
 export default function PrivacyScreen() {

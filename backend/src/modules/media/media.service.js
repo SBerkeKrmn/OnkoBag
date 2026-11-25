@@ -15,6 +15,7 @@ const prisma = require('../../lib/prisma');
 const env = require('../../config/env');
 const ApiError = require('../../utils/ApiError');
 const { mediaSelect } = require('../../lib/selects');
+const { signMedia, verifySignature } = require('../../lib/mediaUrls');
 
 const ALLOWED_TYPES = {
   'image/jpeg': '.jpg',
@@ -70,10 +71,11 @@ async function createFromUpload(userId, file) {
   }
 
   const storageKey = useDatabase ? `${crypto.randomUUID()}${ALLOWED_TYPES[file.mimetype]}` : file.filename;
-  return prisma.media.create({
+  const media = await prisma.media.create({
     data: {
       uploaderId: userId,
       storageKey,
+      // Veritabanında imzasız adres tutulur; istemciye her zaman imzalı bağlantı döner
       url: `${env.PUBLIC_URL}/uploads/${storageKey}`,
       mimeType: file.mimetype,
       sizeBytes: file.size,
@@ -81,23 +83,36 @@ async function createFromUpload(userId, file) {
     },
     select: mediaSelect,
   });
+  return signMedia(media);
 }
 
 /**
- * GET /uploads/:key — veritabanında tutulan görseli döner. Diskteki dosyalar
- * önce express.static ile sunulur; bulunamazsa buraya düşer.
- * Anahtarlar tahmin edilemez UUID'lerdir ve içerik değişmez (uzun önbellek).
+ * GET /uploads/:key?e=<süre>&s=<imza> — görseli yalnızca geçerli imzalı bağlantıyla
+ * sunar (bkz. lib/mediaUrls.js). İmzasız, değiştirilmiş veya süresi dolmuş bağlantı 403.
+ * Görsel önce veritabanında (STORAGE_DRIVER=database), yoksa diskte aranır.
  */
-async function serveStored(req, res, next) {
+async function serveUpload(req, res, next) {
+  const { key } = req.params;
+  if (!verifySignature(key, req.query.e, req.query.s)) {
+    return res.status(403).json({ error: { message: 'Bu görsele erişim izniniz yok veya bağlantının süresi dolmuş', code: 'MEDIA_FORBIDDEN' } });
+  }
+  // Bağlantı süresi kadar yalnızca bu cihazda önbelleğe alınabilir (paylaşılan önbellek yok)
+  const maxAge = Math.max(0, Number(req.query.e) - Math.floor(Date.now() / 1000));
+  res.set('Cache-Control', `private, max-age=${maxAge}`);
   try {
     const media = await prisma.media.findUnique({
-      where: { storageKey: req.params.key },
+      where: { storageKey: key },
       select: { mimeType: true, blob: { select: { data: true } } },
     });
-    if (!media?.blob) return next();
-    res.set('Content-Type', media.mimeType);
-    res.set('Cache-Control', 'public, max-age=31536000, immutable');
-    return res.send(Buffer.from(media.blob.data));
+    if (!media) return next();
+    if (media.blob) {
+      res.set('Content-Type', media.mimeType);
+      return res.send(Buffer.from(media.blob.data));
+    }
+    // Diskte (yerel geliştirme): anahtar biçimi doğrulandığı için yol dışına çıkılamaz
+    return res.sendFile(path.join(env.uploadDir, key), { headers: { 'Content-Type': media.mimeType } }, (err) => {
+      if (err) next();
+    });
   } catch (err) {
     return next(err);
   }
@@ -147,4 +162,4 @@ async function purgeMedia(tx, where) {
   }
 }
 
-module.exports = { upload, createFromUpload, attachMedia, remove, serveStored, purgeMedia };
+module.exports = { upload, createFromUpload, attachMedia, remove, serveUpload, purgeMedia };

@@ -7,6 +7,7 @@ const ApiError = require('../../utils/ApiError');
 const { getBlockedUserIds } = require('../../lib/blocks');
 const { publicUserSelect, formatPublicUser, mediaSelect, cancerTypeSelect } = require('../../lib/selects');
 const { attachMedia, purgeMedia } = require('../media/media.service');
+const { signMedia } = require('../../lib/mediaUrls');
 
 const messageInclude = {
   sender: { select: publicUserSelect },
@@ -22,7 +23,7 @@ function formatMessage(m) {
     type: m.type,
     sender: formatPublicUser(m.sender),
     content: visible ? m.content : null,
-    media: visible ? m.media : [],
+    media: visible ? m.media.map(signMedia) : [],
     status: m.status,
     replyTo: m.replyTo
       ? {

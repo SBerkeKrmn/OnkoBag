@@ -1,6 +1,8 @@
 // Prisma select tanımları ve API yanıt biçimlendiricileri.
 // Şifre hash'i, e-posta gibi alanlar hiçbir zaman başka kullanıcılara dönmez.
 
+const { signUploadUrl } = require('./mediaUrls');
+
 const cancerTypeSelect = { id: true, name: true, slug: true };
 
 /** Başka kullanıcılara gösterilen asgari kullanıcı bilgisi + ana kanser profili */
@@ -28,7 +30,7 @@ function formatPublicUser(user) {
     id: user.id,
     username: user.username,
     displayName: user.displayName,
-    avatarUrl: user.avatarUrl,
+    avatarUrl: signUploadUrl(user.avatarUrl),
     primaryCancer: primary
       ? { status: primary.status, isVerified: primary.isVerified, cancerType: primary.cancerType }
       : null,
