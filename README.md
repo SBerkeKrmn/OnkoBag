@@ -6,6 +6,16 @@ Aktif tedavi sürecindeki kanser hastalarını, aynı kanser türünü atlatmı�
 >
 > Proje web sitesi: https://sberkekrmn.github.io/OnkoBag/ (kaynağı `site/`, `main`'e push edilince GitHub Actions ile yayınlanır)
 
+## Uygulamayı İndir (Android)
+
+<img src="docs/apk-qr.png" alt="OnkoBağ Android APK indirme QR kodu" width="200">
+
+En güncel Android test sürümü (APK) için QR kodu telefonun kamerasıyla okutun. Kurulum sırasında telefon
+"bilinmeyen kaynaklardan yükleme" izni ister. Uygulama bulut sunucusuna bağlanır; ayrıca kurulum gerekmez.
+
+> Yeni bir APK alındığında (`eas build --profile preview --platform android`) EAS'ın verdiği QR kodu
+> `docs/apk-qr.png` dosyasının yerine koyun.
+
 ## Özellikler
 
 - Kanser türü ve duruma (aktif hasta / iyileşen) göre kayıt ve profil
