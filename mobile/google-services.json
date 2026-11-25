@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "54877435810",
+    "project_id": "onkobag-6bd8b",
+    "storage_bucket": "onkobag-6bd8b.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:54877435810:android:66b9d4839e07b1884ce4fb",
+        "android_client_info": {
+          "package_name": "com.onkobag.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBtJl7YEnl_8hI5KdQSbn70XpDI4vJ8-Ls"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
